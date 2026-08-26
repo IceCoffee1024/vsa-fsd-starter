@@ -19,7 +19,7 @@ This README is the authoritative source for this template's concrete project and
 src/
 ├── BuildingBlocks/                                  # stable, reusable, business-agnostic architectural foundations
 │   ├── BackendVsaOwin.BuildingBlocks.WebApi/        # Web API 2 transport primitives
-│   └── BackendVsaOwin.BuildingBlocks.Persistence/   # reserved cross-module persistence infrastructure
+│   └── BackendVsaOwin.BuildingBlocks.Persistence/   # shared SQLite connection and migration infrastructure
 ├── Host/                                            # executable hosts and composition roots
 │   └── BackendVsaOwin.Host/                         # executable host and composition root
 └── Modules/                                         # business modules and vertical slices
@@ -38,15 +38,16 @@ The executable Host is organized by responsibility:
 ```text
 BackendVsaOwin.Host/
 ├── Authentication/   # Basic/OAuth authentication and challenge integration
-├── Composition/      # application identity and the module assembly catalog
+├── Composition/      # application identity and Host-owned module descriptors
 ├── OpenApi/          # NSwag configuration and document processors
+├── Persistence/      # database path configuration
 ├── WebApi/           # Web API configuration, discovery, DI, and exception handling
 ├── App.config
 ├── Program.cs
 └── Startup.cs
 ```
 
-The Host owns `WebApp.Start`, the OWIN pipeline, the Microsoft DI container, Web API configuration, NSwag, and module composition. Its module assembly catalog is the runtime Controller whitelist: Web API discovery and NSwag documentation use the same declared module assemblies, so an unlisted assembly cannot add an endpoint accidentally. Each business module owns its HTTP actions, request and response models, validation, handlers, domain objects, and storage. `BackendVsaOwin.BuildingBlocks.WebApi` contains only shared HTTP transport primitives, including RFC 9457 error contracts; it does not contain domain results or business rules. `BackendVsaOwin.BuildingBlocks.Persistence` is intentionally empty in this starter and is reserved for genuinely cross-module persistence infrastructure; module-specific repositories, mappings, and stores remain inside their owning module. The custom Web API dependency resolver creates and disposes one `IServiceScope` per request.
+The Host owns `WebApp.Start`, the OWIN pipeline, the Microsoft DI container, Web API configuration, NSwag, database migration orchestration, and module composition. Its explicit, Host-owned module descriptors define each module's assembly, service-registration delegate, and dependencies in one ordered catalog. The catalog derives the runtime Controller whitelist and migration order and invokes module service registration, so an unlisted assembly cannot add an endpoint or migration accidentally. No reflection-based module discovery is used. Each business module owns its HTTP actions, request and response models, validation, handlers, domain objects, SQLite Store, and embedded migration scripts. `BackendVsaOwin.BuildingBlocks.WebApi` contains only shared HTTP transport primitives, including RFC 9457 error contracts; it does not contain domain results or business rules. `BackendVsaOwin.BuildingBlocks.Persistence` contains the reusable SQLite connection factory and DbUp runner; module-specific SQL and Stores remain inside their owning module. The custom Web API dependency resolver creates and disposes one `IServiceScope` per request.
 
 Orders references only `Customers.Contracts` and resolves customers through `ICustomerLookup`; it cannot access Customers domain or persistence types. Customers implements that contract, while Host connects the implementation at startup. An order stores `CustomerId` plus a customer-name snapshot so historical order data does not change when the current customer name changes.
 
@@ -54,7 +55,7 @@ Orders references only `Customers.Contracts` and resolves customers through `ICu
 Host -> Customers -> Customers.Contracts
 Host -> Orders    -> Customers.Contracts
 Host, Customers, Orders -> BuildingBlocks.WebApi
-Host -> BuildingBlocks.Persistence (when a shared persistence implementation is introduced)
+Host, Customers, Orders -> BuildingBlocks.Persistence
 Orders -X-> Customers internals
 ```
 
@@ -81,13 +82,25 @@ dotnet run --project src/Host/BackendVsaOwin.Host -- http://localhost:5088/
 
 Stop the host with `Ctrl+C`. A different URL can be supplied as the first command-line argument; the default is also stored in `src/Host/BackendVsaOwin.Host/App.config`.
 
+## Persistence
+
+Customers and Orders use one SQLite database. The default relative path is resolved from the Host executable directory and can be changed in `App.config`:
+
+```xml
+<add key="DatabasePath" value="data/backend-vsa-owin.db" />
+```
+
+The Host creates the parent directory and application logging pipeline, enables and verifies persistent SQLite WAL mode, and then runs embedded DbUp migrations before accepting traffic. DbUp sends migration discovery, execution, and no-op diagnostics through the same JSON logging provider used by the application. The module catalog validates that every dependency has been declared earlier, then migrations run deterministically in that order: Customers first, then Orders. Both modules share the database's default `SchemaVersions` journal, while each module owns its own numbered SQL scripts under `Migrations/`. Applied scripts are tracked by resource name and must not be edited; add a new numbered script for every schema change.
+
+Each Store operation opens and disposes its own connection. `Foreign Keys=True` and an explicit 30-second lock-wait timeout are applied to every connection; deployments with stricter latency requirements can override the timeout when constructing the connection factory. Module Stores use Dapper only for parameterized runtime SQL and row materialization. Their private persistence rows keep SQLite GUID values as canonical strings for explicit domain conversion while mapping amount `TEXT` directly to `decimal`; immutable domain objects remain independent of Dapper. `orders.customer_id` references `customers.id` with `ON DELETE RESTRICT` and `ON UPDATE RESTRICT`; application validation through `ICustomerLookup` remains the user-facing check, and the foreign key is the final integrity guard. Microsoft.Data.Sqlite stores order `decimal` values as `TEXT`, preserving their complete precision without SQLite `REAL` round-trip loss. Batch creation and deletion execute in short, explicitly controlled database transactions.
+
 ## HTTP Endpoints
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `POST` | `/api/customers` | Validate and create an in-memory customer. |
+| `POST` | `/api/customers` | Validate and create a customer. |
 | `GET` | `/api/customers/{id}` | Get one customer by ID. |
-| `POST` | `/api/orders` | Validate a customer reference and create an in-memory order. |
+| `POST` | `/api/orders` | Validate a customer reference and create an order. |
 | `POST` | `/api/orders/batch` | Validate customer references and atomically create a batch of orders. |
 | `GET` | `/api/orders` | List all orders in deterministic ID order. |
 | `GET` | `/api/orders/{id}` | Get one order by ID. |
@@ -209,16 +222,17 @@ A valid batch returns HTTP 200 with `requestedCount`, `deletedCount`, and `missi
 - The small `BackendVsaOwin.BuildingBlocks.WebApi` project adapts RFC 9457 Problem Details to Web API 2. It avoids coupling this .NET Framework template to ASP.NET Core MVC packages while keeping error serialization and media types consistent across modules.
 - `ProblemTypeUris` centralizes the `urn:backend-vsa-owin:problem` namespace and shared validation type. Module-specific types such as order-not-found and customer-not-found remain owned by their modules; the namespace uses the existing colon-delimited contract format.
 - Its global `ModelStateValidationFilter` handles transport binding errors before actions run; feature validators remain responsible for use-case rules and do not depend on Web API `ModelState`.
-- `BackendVsaOwin.BuildingBlocks.Persistence` is a reserved extension point, not a dumping ground for business repositories or persistence entities. It currently has no runtime dependency from the modules or Host.
+- `BackendVsaOwin.BuildingBlocks.Persistence` owns only reusable SQLite connection creation and DbUp orchestration. Customers and Orders retain ownership of their Store implementations and embedded SQL migrations.
+- `Microsoft.Data.Sqlite` provides the SQLite ADO.NET provider, while Dapper removes command and reader boilerplate inside module Stores without owning connections, transactions, migrations, or domain models. DbUp runs forward-only embedded scripts, records them in one shared `SchemaVersions` journal, and writes migration events through the Host's existing Microsoft Extensions Logging provider. The Host explicitly orders module migrations so Orders can add its foreign key after Customers creates the referenced table.
 - `System.Diagnostics.DiagnosticSource` establishes W3C request activities on .NET Framework 4.8. Microsoft Extensions Logging writes JSON-structured exception records to the console; production deployments can replace the provider without changing the exception boundary.
 - Microsoft DI 10.0.10 is the container; compatibility support packages remain transitive.
 - PolySharp 1.13.0 privately supplies internal compiler polyfills for modern C# syntax on `net48`; generated types are not made public, and `required` does not replace HTTP request validation.
-- xUnit.net v3 on Microsoft Testing Platform covers focused slice tests and in-memory OWIN integration tests without a separate test adapter.
-- `AddManyAsync` owns the atomic batch-create boundary; a durable implementation must preserve it with a database transaction or equivalent guarantee.
+- xUnit.net v3 on Microsoft Testing Platform covers focused slice tests and OWIN TestServer integration tests with isolated temporary SQLite files, without a separate test adapter.
+- `AddManyAsync` owns the atomic batch-create boundary and the SQLite implementation enforces it with a database transaction.
 - `ICustomerLookup` is the deliberately small cross-module API; Orders does not share repositories, entities, or an HTTP loopback with Customers.
 - The custom Basic and OAuth2 schemes deliberately share one credential from `App.config`; `ICredentialValidator` separates credential verification from Katana request processing without introducing a user-store abstraction. Swagger and `/oauth/token` remain public, while downstream Web API requests accept Basic OR Bearer. The password grant, user stores, client authentication, token rotation, and role or policy authorization remain outside this minimal template.
 - `ApplicationIdentity` centralizes the compile-time application name, OpenAPI title, and Basic authentication Realm so a cloned template has one application-identity source. Assembly names and namespaces remain compile-time project identity and are not runtime settings.
 
 ## Current Limits
 
-The in-memory stores demonstrate slice and module boundaries but are not production persistence. Batch deletion is best-effort per ID and is not transactional across the batch. Customer updates and deletes are intentionally absent, so referential lifecycle policies remain outside this minimal template. Durable storage, persistent log aggregation, distributed-trace export, and repository-wide automation are also out of scope; console logs must be collected and access-controlled by the deployment environment. The shared Basic credential and OAuth password grant are demonstration-only authentication boundaries, not a production identity system.
+The single SQLite file provides durable local persistence, not replication, high availability, or multi-process write coordination. Batch deletion still treats missing IDs as a successful best-effort outcome, although its writes are committed in one transaction. Customer updates and deletes are intentionally absent; the database currently protects referenced customers with `RESTRICT`, so richer referential lifecycle policies remain outside this minimal template. Persistent log aggregation, distributed-trace export, backup automation, and repository-wide automation are also out of scope; the database file must be backed up and protected by the deployment environment. The shared Basic credential and OAuth password grant are demonstration-only authentication boundaries, not a production identity system.

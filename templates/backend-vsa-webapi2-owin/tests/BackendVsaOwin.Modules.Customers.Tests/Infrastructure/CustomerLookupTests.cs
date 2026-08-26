@@ -1,6 +1,7 @@
 using System;
 using BackendVsaOwin.Modules.Customers.Domain;
 using BackendVsaOwin.Modules.Customers.Infrastructure;
+using BackendVsaOwin.Modules.Customers.Tests.Support;
 using Xunit;
 
 namespace BackendVsaOwin.Modules.Customers.Tests.Infrastructure;
@@ -13,7 +14,7 @@ public sealed class CustomerLookupTests
         var cancellationToken = TestContext.Current.CancellationToken;
         var existingId = Guid.Parse("2101bbd1-c7b0-4e56-a779-268210ab4b89");
         var missingId = Guid.Parse("e3be5ca9-1a23-4115-bfe3-b9f60656f2bb");
-        var store = new InMemoryCustomerStore();
+        var store = new FakeCustomerStore();
         await store.AddAsync(
             new Customer(existingId, "Ada Lovelace"),
             cancellationToken);

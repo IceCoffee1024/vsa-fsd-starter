@@ -19,7 +19,7 @@ public sealed class BatchCreateOrdersEndpointTests
     [Fact]
     public async Task Post_persists_and_returns_every_order()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = TestServerFactory.CreateAuthenticatedClient(server);
         var firstCustomer = await CustomerEndpointTestHelper.CreateCustomerAsync(
             server,
@@ -66,7 +66,7 @@ public sealed class BatchCreateOrdersEndpointTests
     [Fact]
     public async Task Post_rejects_the_entire_invalid_batch()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = TestServerFactory.CreateAuthenticatedClient(server);
         var customer = await CustomerEndpointTestHelper.CreateCustomerAsync(
             server,
@@ -111,7 +111,7 @@ public sealed class BatchCreateOrdersEndpointTests
     [Fact]
     public async Task Post_rejects_the_entire_batch_when_a_customer_is_unknown()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = TestServerFactory.CreateAuthenticatedClient(server);
         var customer = await CustomerEndpointTestHelper.CreateCustomerAsync(
             server,

@@ -18,7 +18,7 @@ public sealed class CreateOrderEndpointTests
     [Fact]
     public async Task Post_returns_created_order_for_a_valid_request()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = TestServerFactory.CreateAuthenticatedClient(server);
         var customer = await CustomerEndpointTestHelper.CreateCustomerAsync(
             server,
@@ -44,7 +44,7 @@ public sealed class CreateOrderEndpointTests
     [Fact]
     public async Task Post_returns_validation_problem_for_an_invalid_request()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = TestServerFactory.CreateAuthenticatedClient(server);
         var request = new CreateOrderRequest
         {
@@ -66,7 +66,7 @@ public sealed class CreateOrderEndpointTests
     [Fact]
     public async Task Post_rejects_an_unknown_customer()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = TestServerFactory.CreateAuthenticatedClient(server);
         var request = new CreateOrderRequest
         {

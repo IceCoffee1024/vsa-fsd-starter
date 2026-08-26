@@ -4,10 +4,10 @@ using System.Reflection;
 using System.Threading;
 using BackendVsaOwin.Host.Authentication;
 using BackendVsaOwin.Host.Composition;
-using BackendVsaOwin.Modules.Customers;
-using BackendVsaOwin.Modules.Orders;
 using BackendVsaOwin.Host.OpenApi;
+using BackendVsaOwin.Host.Persistence;
 using BackendVsaOwin.Host.WebApi;
+using BackendVsaOwin.BuildingBlocks.Persistence.Sqlite;
 using HostApplicationIdentity = BackendVsaOwin.Host.Composition.ApplicationIdentity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -19,16 +19,23 @@ public sealed class Startup
 {
     public void Configuration(IAppBuilder app)
     {
-        Configure(app, ModuleCatalog.Assemblies);
+        Configure(
+            app,
+            ModuleCatalog.ControllerAssemblies,
+            DatabaseOptions.FromConfiguration());
     }
 
     internal static void Configure(
         IAppBuilder app,
-        IEnumerable<Assembly> controllerAssemblies)
+        IEnumerable<Assembly> controllerAssemblies,
+        DatabaseOptions databaseOptions)
     {
+        var connectionFactory = new SqliteConnectionFactory(
+            databaseOptions.DatabasePath,
+            databaseOptions.Pooling);
         var services = new ServiceCollection();
-        services.AddCustomersModule();
-        services.AddOrdersModule();
+        services.AddSingleton(connectionFactory);
+        ModuleCatalog.RegisterServices(services);
         services.AddLogging(logging =>
         {
             logging.AddJsonConsole(options =>
@@ -44,6 +51,20 @@ public sealed class Startup
                 ValidateOnBuild = true,
                 ValidateScopes = true,
             });
+
+        try
+        {
+            SqliteDatabaseInitializer.Initialize(connectionFactory);
+            SqliteMigrationRunner.Migrate(
+                connectionFactory,
+                ModuleCatalog.MigrationAssemblies,
+                serviceProvider.GetRequiredService<ILoggerFactory>());
+        }
+        catch
+        {
+            serviceProvider.Dispose();
+            throw;
+        }
 
         var httpConfiguration = WebApiConfig.Create(
             serviceProvider,

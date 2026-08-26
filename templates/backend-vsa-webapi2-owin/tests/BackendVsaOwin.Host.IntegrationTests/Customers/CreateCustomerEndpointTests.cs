@@ -17,7 +17,7 @@ public sealed class CreateCustomerEndpointTests
     [Fact]
     public async Task Post_returns_the_created_customer()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = TestServerFactory.CreateAuthenticatedClient(server);
         using var request = new StringContent(
             "{\"displayName\":\"  Ada Lovelace  \"}",
@@ -43,7 +43,7 @@ public sealed class CreateCustomerEndpointTests
     [Fact]
     public async Task Post_rejects_an_empty_display_name()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = TestServerFactory.CreateAuthenticatedClient(server);
         var request = new CreateCustomerRequest { DisplayName = " " };
 
@@ -62,7 +62,7 @@ public sealed class CreateCustomerEndpointTests
     [Fact]
     public async Task Post_rejects_malformed_json_with_a_problem_response()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = TestServerFactory.CreateAuthenticatedClient(server);
         using var request = new StringContent(
             "{",

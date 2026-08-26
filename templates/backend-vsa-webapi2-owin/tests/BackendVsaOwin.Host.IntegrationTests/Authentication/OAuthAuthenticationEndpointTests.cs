@@ -18,7 +18,7 @@ public sealed class OAuthAuthenticationEndpointTests
     [Fact]
     public async Task Valid_resource_owner_credentials_issue_a_bearer_token()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = server.HttpClient;
         using var content = CreateTokenRequest("test-password");
 
@@ -37,7 +37,7 @@ public sealed class OAuthAuthenticationEndpointTests
     [Fact]
     public async Task Bearer_token_authenticates_the_same_api_as_basic()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = server.HttpClient;
         var accessToken = await IssueAccessTokenAsync(client);
         client.DefaultRequestHeaders.Authorization =
@@ -53,7 +53,7 @@ public sealed class OAuthAuthenticationEndpointTests
     [Fact]
     public async Task Query_string_bearer_token_authenticates_the_api()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = server.HttpClient;
         var accessToken = await IssueAccessTokenAsync(client);
 
@@ -68,7 +68,7 @@ public sealed class OAuthAuthenticationEndpointTests
     [Fact]
     public async Task Bearer_header_takes_precedence_over_query_string_token()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = server.HttpClient;
         var accessToken = await IssueAccessTokenAsync(client);
         client.DefaultRequestHeaders.Authorization =
@@ -88,7 +88,7 @@ public sealed class OAuthAuthenticationEndpointTests
     [Fact]
     public async Task Invalid_resource_owner_credentials_do_not_issue_a_token()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = server.HttpClient;
         using var content = CreateTokenRequest("wrong-password");
 
@@ -103,7 +103,7 @@ public sealed class OAuthAuthenticationEndpointTests
     [Fact]
     public async Task Invalid_bearer_token_returns_only_a_bearer_challenge()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = server.HttpClient;
         client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", "invalid-token");
@@ -121,7 +121,7 @@ public sealed class OAuthAuthenticationEndpointTests
     [Fact]
     public async Task Invalid_query_string_token_returns_only_a_bearer_challenge()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = server.HttpClient;
 
         using var response = await client.GetAsync(

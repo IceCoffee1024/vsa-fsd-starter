@@ -1,21 +1,16 @@
-using System.Linq;
 using BackendVsaOwin.Host;
 using BackendVsaOwin.Host.Composition;
 using Owin;
 
 namespace BackendVsaOwin.Host.IntegrationTests.Support;
 
-/// <summary>
-/// Adds the test assembly to the controller whitelist without changing production startup.
-/// </summary>
-public sealed class TestStartup
+public sealed class DatabaseTestStartup
 {
     public void Configuration(IAppBuilder app)
     {
         Startup.Configure(
             app,
-            ModuleCatalog.ControllerAssemblies
-                .Concat(new[] { typeof(FaultingController).Assembly }),
+            ModuleCatalog.ControllerAssemblies,
             TemporaryDatabase.CreateOptions(app));
     }
 }

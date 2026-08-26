@@ -15,7 +15,7 @@ public static class CustomersModule
     public static IServiceCollection AddCustomersModule(
         this IServiceCollection services)
     {
-        services.AddSingleton<ICustomerStore, InMemoryCustomerStore>();
+        services.AddSingleton<ICustomerStore, SqliteCustomerStore>();
         services.AddSingleton<ICustomerLookup, CustomerLookup>();
         services.AddTransient<CreateCustomerValidator>();
         services.AddTransient(

@@ -21,7 +21,7 @@
 src/
 ├── BuildingBlocks/                                  # 稳定、可复用、与业务无关的架构基础组件
 │   ├── BackendVsaOwin.BuildingBlocks.WebApi/        # Web API 2 传输层基础组件
-│   └── BackendVsaOwin.BuildingBlocks.Persistence/   # 预留的跨模块持久化基础设施
+│   └── BackendVsaOwin.BuildingBlocks.Persistence/   # 共享 SQLite 连接和迁移基础设施
 ├── Host/                                            # 可执行宿主和组合根
 │   └── BackendVsaOwin.Host/                         # 当前可执行宿主和组合根
 └── Modules/                                         # 业务模块和垂直切片
@@ -40,15 +40,16 @@ tests/                                               # 单元测试和宿主集�
 ```text
 BackendVsaOwin.Host/
 ├── Authentication/   # Basic/OAuth 认证和 challenge 集成
-├── Composition/      # 应用身份和模块程序集目录
+├── Composition/      # 应用身份和 Host-owned 模块描述符
 ├── OpenApi/          # NSwag 配置和文档处理器
+├── Persistence/      # 数据库路径配置
 ├── WebApi/           # Web API 配置、发现、DI 和异常处理
 ├── App.config
 ├── Program.cs
 └── Startup.cs
 ```
 
-Host 负责 `WebApp.Start`、OWIN 管道、Microsoft DI 容器、Web API 配置、NSwag 和模块组合。Host 的模块程序集目录也是运行时 Controller 白名单：Web API Controller 发现和 NSwag 文档生成共用同一组已声明模块，因此未列入的程序集不会意外增加端点。每个业务模块负责自身的 HTTP 动作、请求与响应模型、验证、处理器、领域对象和存储。`BackendVsaOwin.BuildingBlocks.WebApi` 只包含共享 HTTP 传输层基础类型，包括 RFC 9457 错误契约，不包含领域结果或业务规则。`BackendVsaOwin.BuildingBlocks.Persistence` 在此启动模板中有意保持为空，仅作为真正跨模块持久化基础设施的扩展点；模块专属的仓储、映射和存储仍归各自模块所有。自定义 Web API 依赖解析器为每个请求创建并释放一个 `IServiceScope`。
+Host 负责 `WebApp.Start`、OWIN 管道、Microsoft DI 容器、Web API 配置、NSwag、数据库迁移编排和模块组合。显式的 Host-owned 模块描述符在一个有序目录中统一声明各模块的程序集、服务注册委托和依赖。模块目录负责派生运行时 Controller 白名单与迁移顺序，并调用模块服务注册，因此未列入的程序集不会意外增加端点或迁移。模板不使用基于反射的模块自动发现。每个业务模块负责自身的 HTTP 动作、请求与响应模型、验证、处理器、领域对象、SQLite Store 和嵌入式迁移脚本。`BackendVsaOwin.BuildingBlocks.WebApi` 只包含共享 HTTP 传输层基础类型，包括 RFC 9457 错误契约，不包含领域结果或业务规则。`BackendVsaOwin.BuildingBlocks.Persistence` 包含可复用的 SQLite 连接工厂和 DbUp 执行器；模块专属 SQL 和 Store 仍归各自模块所有。自定义 Web API 依赖解析器为每个请求创建并释放一个 `IServiceScope`。
 
 Orders 只引用 `Customers.Contracts`，并通过 `ICustomerLookup` 查询客户；它无法访问 Customers 的领域或持久化类型。Customers 实现该契约，Host 在启动时完成连接。订单保存 `CustomerId` 和客户名称快照，因此当前客户名称的变化不会改写历史订单数据。
 
@@ -56,7 +57,7 @@ Orders 只引用 `Customers.Contracts`，并通过 `ICustomerLookup` 查询客�
 Host -> Customers -> Customers.Contracts
 Host -> Orders    -> Customers.Contracts
 Host、Customers、Orders -> BuildingBlocks.WebApi
-引入共享持久化实现后：Host -> BuildingBlocks.Persistence
+Host、Customers、Orders -> BuildingBlocks.Persistence
 Orders -X-> Customers 内部实现
 ```
 
@@ -83,13 +84,25 @@ dotnet run --project src/Host/BackendVsaOwin.Host -- http://localhost:5088/
 
 使用 `Ctrl+C` 停止 Host。可以通过第一个命令行参数指定其他 URL；默认值也保存在 `src/Host/BackendVsaOwin.Host/App.config` 中。
 
+## 持久化
+
+Customers 与 Orders 使用同一个 SQLite 数据库。默认相对路径以 Host 可执行文件目录为基准解析，可在 `App.config` 中修改：
+
+```xml
+<add key="DatabasePath" value="data/backend-vsa-owin.db" />
+```
+
+Host 会创建父目录和应用日志管道，启用并验证持久化的 SQLite WAL 模式，然后在开始接受流量前执行嵌入式 DbUp 迁移。DbUp 会通过应用所用的同一个 JSON 日志 Provider 输出迁移发现、执行和无需更新等诊断信息。模块目录会验证每项依赖都已在前面声明，然后迁移按该顺序确定性执行：先 Customers，后 Orders。两个模块共享数据库默认的 `SchemaVersions` 日志表，同时各模块分别拥有 `Migrations/` 下的编号 SQL 脚本。已执行脚本按资源名称跟踪，不应修改；每次 Schema 变更都应新增一个编号脚本。
+
+每次 Store 操作都会独立打开并释放连接，且每个连接都启用 `Foreign Keys=True` 和显式的 30 秒锁等待超时；对延迟有更严格要求的部署可以在构造连接工厂时覆盖该超时。模块 Store 只使用 Dapper 执行参数化运行时 SQL 和物化行对象。其私有持久化行模型把 SQLite GUID 保持为规范字符串并显式转换为领域类型，同时把金额 `TEXT` 直接映射成 `decimal`；不可变领域对象不依赖 Dapper。`orders.customer_id` 通过 `ON DELETE RESTRICT` 和 `ON UPDATE RESTRICT` 引用 `customers.id`；通过 `ICustomerLookup` 完成的应用验证仍是面向用户的检查，外键是最终的数据完整性保护。Microsoft.Data.Sqlite 把订单 `decimal` 值保存为 `TEXT`，避免 SQLite `REAL` 导致完整精度在往返后丢失。批量新增和批量删除均在显式控制的短事务中执行。
+
 ## HTTP 端点
 
 | 方法 | 路径 | 用途 |
 | --- | --- | --- |
-| `POST` | `/api/customers` | 验证并创建一个内存客户。 |
+| `POST` | `/api/customers` | 验证并创建一个客户。 |
 | `GET` | `/api/customers/{id}` | 根据 ID 获取一个客户。 |
-| `POST` | `/api/orders` | 验证客户引用并创建一个内存订单。 |
+| `POST` | `/api/orders` | 验证客户引用并创建一个订单。 |
 | `POST` | `/api/orders/batch` | 验证客户引用并原子地批量创建订单。 |
 | `GET` | `/api/orders` | 按 ID 确定性排序列出所有订单。 |
 | `GET` | `/api/orders/{id}` | 根据 ID 获取一个订单。 |
@@ -211,16 +224,17 @@ GET /api/orders?access_token=<access_token>
 - 小型 `BackendVsaOwin.BuildingBlocks.WebApi` 项目负责将 RFC 9457 Problem Details 适配到 Web API 2。它避免让此 .NET Framework 模板耦合 ASP.NET Core MVC 包，同时保持跨模块错误序列化和媒体类型一致。
 - `ProblemTypeUris` 集中管理 `urn:backend-vsa-owin:problem` 命名空间和共享的验证错误类型。`order-not-found`、`customer-not-found` 等模块专属类型仍由各自模块负责；命名空间继续使用现有的冒号分隔契约格式。
 - 其中的全局 `ModelStateValidationFilter` 会在 Action 执行前处理传输层绑定错误；Feature Validator 继续负责用例规则，不依赖 Web API 的 `ModelState`。
-- `BackendVsaOwin.BuildingBlocks.Persistence` 是预留扩展点，不是业务仓储或持久化实体的集中目录；当前模块和 Host 均没有运行时依赖。
+- `BackendVsaOwin.BuildingBlocks.Persistence` 只负责可复用的 SQLite 连接创建和 DbUp 编排。Customers 与 Orders 继续拥有各自的 Store 实现和嵌入式 SQL 迁移。
+- `Microsoft.Data.Sqlite` 提供 SQLite ADO.NET Provider，Dapper 则只在模块 Store 内消除 Command 和 Reader 样板代码，不负责连接、事务、迁移或领域模型。DbUp 执行只向前演进的嵌入式脚本，将记录写入一个共享的 `SchemaVersions` 日志表，并通过 Host 现有的 Microsoft Extensions Logging Provider 输出迁移事件。Host 显式规定模块迁移顺序，使 Orders 能在 Customers 创建被引用表之后添加外键。
 - `System.Diagnostics.DiagnosticSource` 在 .NET Framework 4.8 上建立 W3C 请求 Activity。Microsoft Extensions Logging 将 JSON 结构化异常记录写入控制台；生产部署可以替换日志 Provider，而无需修改异常边界。
 - Microsoft DI 10.0.10 作为依赖注入容器，兼容性支持包保持为传递依赖。
 - PolySharp 1.13.0 以私有方式为 `net48` 提供现代 C# 语法所需的内部编译器 Polyfill；生成类型不会公开，且 `required` 不会取代 HTTP 请求验证。
-- 基于 Microsoft Testing Platform 的 xUnit.net v3 覆盖针对性切片测试和内存 OWIN 集成测试，不需要单独的测试适配器。
-- `AddManyAsync` 负责批量新增的原子边界；持久化实现必须使用数据库事务或等效机制维持这一保证。
+- 基于 Microsoft Testing Platform 的 xUnit.net v3 覆盖针对性切片测试，以及使用隔离临时 SQLite 文件的 OWIN TestServer 集成测试，不需要单独的测试适配器。
+- `AddManyAsync` 负责批量新增的原子边界，SQLite 实现通过数据库事务落实这一保证。
 - `ICustomerLookup` 是有意保持精简的跨模块 API；Orders 不与 Customers 共享仓储、实体，也不通过本机 HTTP 回调 Customers。
 - 自定义 Basic 和 OAuth2 方案有意共享从 `App.config` 读取的一个凭据；`ICredentialValidator` 将凭据验证与 Katana 请求处理分离，但没有提前引入用户存储抽象。Swagger 和 `/oauth/token` 保持公开，后续 Web API 请求接受 Basic 或 Bearer。Password Grant、用户存储、客户端认证、令牌轮换以及角色或策略授权仍不在此最小模板范围内。
 - `ApplicationIdentity` 集中管理编译期的应用名称、OpenAPI 标题和 Basic 认证 Realm，为克隆模板提供统一的应用身份来源。程序集名称和命名空间属于编译期项目身份，不作为运行时配置。
 
 ## 当前限制
 
-内存存储用于演示切片和模块边界，并非生产级持久化方案。批量删除按 ID 尽力执行，不提供整个批次的事务性。Customers 有意暂未提供更新和删除，因此引用生命周期策略不在这个最小模板的范围内。持久化存储、持久化日志聚合、分布式 Trace 导出和仓库级自动化同样不在范围内；部署环境必须收集控制台日志并控制其访问权限。共享 Basic 凭据和 OAuth Password Grant 只是演示用的认证边界，不是生产级身份系统。
+单个 SQLite 文件提供持久化本地存储，但不提供复制、高可用或多进程写入协调。批量删除仍把不存在的 ID 视为成功的尽力处理结果，但其写入会在一个事务中提交。Customers 有意暂未提供更新和删除；数据库当前通过 `RESTRICT` 保护已被引用的客户，因此更完整的引用生命周期策略仍不在此最小模板范围内。持久化日志聚合、分布式 Trace 导出、备份自动化和仓库级自动化同样不在范围内；部署环境必须备份并保护数据库文件。共享 Basic 凭据和 OAuth Password Grant 只是演示用的认证边界，不是生产级身份系统。

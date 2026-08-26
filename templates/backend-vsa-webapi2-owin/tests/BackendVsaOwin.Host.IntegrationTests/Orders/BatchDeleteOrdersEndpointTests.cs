@@ -18,7 +18,7 @@ public sealed class BatchDeleteOrdersEndpointTests
     [Fact]
     public async Task Post_removes_existing_orders_and_reports_missing_ids()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = TestServerFactory.CreateAuthenticatedClient(server);
         var first = await OrderEndpointTestHelper.CreateOrderAsync(
             server,
@@ -56,7 +56,7 @@ public sealed class BatchDeleteOrdersEndpointTests
     [Fact]
     public async Task Post_rejects_an_empty_id_list()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = TestServerFactory.CreateAuthenticatedClient(server);
         var request = new BatchDeleteOrdersRequest
         {

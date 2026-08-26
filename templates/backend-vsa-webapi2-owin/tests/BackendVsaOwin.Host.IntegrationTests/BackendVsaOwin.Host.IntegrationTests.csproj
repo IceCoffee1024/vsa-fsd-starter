@@ -11,6 +11,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Host\BackendVsaOwin.Host\BackendVsaOwin.Host.csproj" />
     <ProjectReference Include="..\..\src\Modules\BackendVsaOwin.Modules.Customers\BackendVsaOwin.Modules.Customers.csproj" />
+    <ProjectReference Include="..\..\src\BuildingBlocks\BackendVsaOwin.BuildingBlocks.Persistence\BackendVsaOwin.BuildingBlocks.Persistence.csproj" />
     <ProjectReference Include="..\..\src\BuildingBlocks\BackendVsaOwin.BuildingBlocks.WebApi\BackendVsaOwin.BuildingBlocks.WebApi.csproj" />
   </ItemGroup>
 

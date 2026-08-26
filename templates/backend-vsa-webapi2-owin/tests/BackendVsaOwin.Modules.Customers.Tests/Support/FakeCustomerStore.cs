@@ -4,41 +4,25 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using BackendVsaOwin.Modules.Customers.Domain;
+using BackendVsaOwin.Modules.Customers.Infrastructure;
 
-namespace BackendVsaOwin.Modules.Customers.Infrastructure;
+namespace BackendVsaOwin.Modules.Customers.Tests.Support;
 
-internal sealed class InMemoryCustomerStore : ICustomerStore
+internal sealed class FakeCustomerStore : ICustomerStore
 {
     private readonly Dictionary<Guid, Customer> _customers = new();
-    private readonly object _syncRoot = new();
 
     public Task AddAsync(Customer customer, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-
-        lock (_syncRoot)
-        {
-            if (_customers.ContainsKey(customer.Id))
-            {
-                throw new InvalidOperationException(
-                    $"Customer '{customer.Id}' already exists.");
-            }
-
-            _customers.Add(customer.Id, customer);
-        }
-
+        _customers.Add(customer.Id, customer);
         return Task.CompletedTask;
     }
 
     public Task<Customer?> GetAsync(Guid id, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        Customer? customer;
-        lock (_syncRoot)
-        {
-            _customers.TryGetValue(id, out customer);
-        }
-
+        _customers.TryGetValue(id, out var customer);
         return Task.FromResult<Customer?>(customer);
     }
 
@@ -47,17 +31,11 @@ internal sealed class InMemoryCustomerStore : ICustomerStore
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-
-        IReadOnlyCollection<Customer> customers;
-        lock (_syncRoot)
-        {
-            customers = ids
-                .Distinct()
-                .Where(_customers.ContainsKey)
-                .Select(id => _customers[id])
-                .ToArray();
-        }
-
+        IReadOnlyCollection<Customer> customers = ids
+            .Distinct()
+            .Where(_customers.ContainsKey)
+            .Select(id => _customers[id])
+            .ToArray();
         return Task.FromResult(customers);
     }
 }

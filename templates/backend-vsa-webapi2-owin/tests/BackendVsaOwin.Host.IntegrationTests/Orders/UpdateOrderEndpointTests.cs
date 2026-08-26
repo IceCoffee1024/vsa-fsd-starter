@@ -17,7 +17,7 @@ public sealed class UpdateOrderEndpointTests
     [Fact]
     public async Task Put_updates_the_existing_order()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = TestServerFactory.CreateAuthenticatedClient(server);
         var created = await OrderEndpointTestHelper.CreateOrderAsync(
             server,
@@ -52,7 +52,7 @@ public sealed class UpdateOrderEndpointTests
     [Fact]
     public async Task Put_rejects_invalid_input()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = TestServerFactory.CreateAuthenticatedClient(server);
         var created = await OrderEndpointTestHelper.CreateOrderAsync(
             server,
@@ -78,7 +78,7 @@ public sealed class UpdateOrderEndpointTests
     [Fact]
     public async Task Put_returns_not_found_for_an_unknown_order()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = TestServerFactory.CreateAuthenticatedClient(server);
         var id = Guid.Parse("e1f1eadd-5983-42f8-9480-2459c90ad762");
         var request = new UpdateOrderRequest

@@ -14,7 +14,7 @@ public sealed class ListOrdersEndpointTests
     [Fact]
     public async Task Get_returns_created_orders()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = TestServerFactory.CreateAuthenticatedClient(server);
         var created = await OrderEndpointTestHelper.CreateOrderAsync(
             server,

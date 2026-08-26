@@ -15,7 +15,7 @@ public sealed class DeleteOrderEndpointTests
     [Fact]
     public async Task Delete_removes_the_order_and_then_returns_not_found()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = TestServerFactory.CreateAuthenticatedClient(server);
         var created = await OrderEndpointTestHelper.CreateOrderAsync(
             server,
@@ -40,7 +40,7 @@ public sealed class DeleteOrderEndpointTests
     [Fact]
     public async Task Delete_returns_not_found_for_an_unknown_order()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = TestServerFactory.CreateAuthenticatedClient(server);
         var id = Guid.Parse("e1f1eadd-5983-42f8-9480-2459c90ad762");
 

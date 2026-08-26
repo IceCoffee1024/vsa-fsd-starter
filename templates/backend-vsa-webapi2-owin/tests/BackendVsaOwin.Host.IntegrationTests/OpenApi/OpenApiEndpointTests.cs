@@ -13,7 +13,7 @@ public sealed class OpenApiEndpointTests
     [Fact]
     public async Task Get_describes_customer_and_order_endpoints()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = TestServerFactory.CreateAuthenticatedClient(server);
         using var response = await client.GetAsync(
             "swagger/v1/swagger.json",
@@ -84,7 +84,7 @@ public sealed class OpenApiEndpointTests
     [Fact]
     public async Task Swagger_ui_uses_the_configured_application_title()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = TestServerFactory.CreateAuthenticatedClient(server);
         using var response = await client.GetAsync(
             "swagger/index.html",
@@ -98,7 +98,7 @@ public sealed class OpenApiEndpointTests
     [Fact]
     public async Task Get_uses_camel_case_for_json_schema_properties()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = TestServerFactory.CreateAuthenticatedClient(server);
 
         using var response = await client.GetAsync(
@@ -120,7 +120,7 @@ public sealed class OpenApiEndpointTests
     [Fact]
     public async Task Get_includes_xml_documentation_descriptions()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = TestServerFactory.CreateAuthenticatedClient(server);
 
         using var response = await client.GetAsync(

@@ -19,7 +19,7 @@ public sealed class BatchCreateOrdersHandlerTests
         var firstCustomerId = Guid.Parse("723e4e68-1936-4d0d-aa6e-3e8cf487cfb4");
         var secondCustomerId = Guid.Parse("3a3dfe2a-ee43-4913-af69-dd5685df26fd");
         var ids = new Queue<Guid>(new[] { firstId, secondId });
-        var store = new InMemoryOrderStore();
+        var store = new FakeOrderStore();
         var customers = new StubCustomerLookup(
             new CustomerReference(firstCustomerId, "Ada Lovelace"),
             new CustomerReference(secondCustomerId, "Grace Hopper"));
@@ -64,7 +64,7 @@ public sealed class BatchCreateOrdersHandlerTests
         var cancellationToken = TestContext.Current.CancellationToken;
         var existingCustomerId = Guid.Parse("7cc6451d-c7c4-4424-b86f-2ad66b2273c9");
         var missingCustomerId = Guid.Parse("920e702c-5a8b-4a64-a71f-74d5399f0116");
-        var store = new InMemoryOrderStore();
+        var store = new FakeOrderStore();
         var customers = new StubCustomerLookup(
             new CustomerReference(existingCustomerId, "Ada Lovelace"));
         var handler = new BatchCreateOrdersHandler(store, customers);

@@ -16,7 +16,7 @@ public sealed class GetCustomerEndpointTests
     [Fact]
     public async Task Get_returns_the_created_customer()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = TestServerFactory.CreateAuthenticatedClient(server);
         var created = await CustomerEndpointTestHelper.CreateCustomerAsync(
             server,
@@ -36,7 +36,7 @@ public sealed class GetCustomerEndpointTests
     [Fact]
     public async Task Get_returns_not_found_for_an_unknown_customer()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = TestServerFactory.CreateAuthenticatedClient(server);
         var id = Guid.Parse("64a649c8-a26c-48e1-895d-5e0459a3aba0");
 

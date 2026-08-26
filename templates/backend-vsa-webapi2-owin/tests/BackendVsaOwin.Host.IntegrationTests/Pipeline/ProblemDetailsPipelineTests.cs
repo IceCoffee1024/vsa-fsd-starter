@@ -37,7 +37,7 @@ public sealed class ProblemDetailsPipelineTests
     [Fact]
     public async Task Production_startup_does_not_discover_test_controllers()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = TestServerFactory.CreateAuthenticatedClient(server);
 
         using var response = await client.GetAsync(
@@ -50,7 +50,7 @@ public sealed class ProblemDetailsPipelineTests
     [Fact]
     public async Task Request_continues_a_valid_w3c_trace_context()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = TestServerFactory.CreateAuthenticatedClient(server);
         using var request = new HttpRequestMessage(
             HttpMethod.Get,

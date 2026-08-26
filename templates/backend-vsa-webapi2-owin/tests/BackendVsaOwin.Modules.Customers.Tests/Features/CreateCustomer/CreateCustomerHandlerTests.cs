@@ -1,6 +1,7 @@
 using System;
 using BackendVsaOwin.Modules.Customers.Features.CreateCustomer;
 using BackendVsaOwin.Modules.Customers.Infrastructure;
+using BackendVsaOwin.Modules.Customers.Tests.Support;
 using Xunit;
 
 namespace BackendVsaOwin.Modules.Customers.Tests.Features.CreateCustomer;
@@ -12,7 +13,7 @@ public sealed class CreateCustomerHandlerTests
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         var expectedId = Guid.Parse("8de376e5-e9ac-4870-8469-94eb45e25ae2");
-        var store = new InMemoryCustomerStore();
+        var store = new FakeCustomerStore();
         var handler = new CreateCustomerHandler(store, () => expectedId);
         var request = new CreateCustomerRequest
         {

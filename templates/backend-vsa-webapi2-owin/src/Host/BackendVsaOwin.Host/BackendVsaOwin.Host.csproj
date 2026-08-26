@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\BuildingBlocks\BackendVsaOwin.BuildingBlocks.Persistence\BackendVsaOwin.BuildingBlocks.Persistence.csproj" />
     <ProjectReference Include="..\..\BuildingBlocks\BackendVsaOwin.BuildingBlocks.WebApi\BackendVsaOwin.BuildingBlocks.WebApi.csproj" />
     <ProjectReference Include="..\..\Modules\BackendVsaOwin.Modules.Customers\BackendVsaOwin.Modules.Customers.csproj" />
     <ProjectReference Include="..\..\Modules\BackendVsaOwin.Modules.Orders\BackendVsaOwin.Modules.Orders.csproj" />

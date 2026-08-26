@@ -35,7 +35,7 @@ public sealed class BasicAuthenticationEndpointTests
     [Fact]
     public async Task Api_request_without_credentials_returns_basic_challenge()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = server.HttpClient;
 
         using var response = await client.GetAsync(
@@ -55,7 +55,7 @@ public sealed class BasicAuthenticationEndpointTests
     [Fact]
     public async Task Api_request_with_wrong_credentials_returns_basic_challenge()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = server.HttpClient;
         client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue(
@@ -78,7 +78,7 @@ public sealed class BasicAuthenticationEndpointTests
     [InlineData("swagger/index.html")]
     public async Task Swagger_remains_public_without_credentials(string path)
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = server.HttpClient;
 
         using var response = await client.GetAsync(

@@ -7,13 +7,20 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\BuildingBlocks\BackendVsaOwin.BuildingBlocks.Persistence\BackendVsaOwin.BuildingBlocks.Persistence.csproj" />
     <ProjectReference Include="..\..\BuildingBlocks\BackendVsaOwin.BuildingBlocks.WebApi\BackendVsaOwin.BuildingBlocks.WebApi.csproj" />
     <ProjectReference Include="..\BackendVsaOwin.Modules.Customers.Contracts\BackendVsaOwin.Modules.Customers.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Dapper" />
     <PackageReference Include="Microsoft.AspNet.WebApi.Core" />
+    <PackageReference Include="Microsoft.Data.Sqlite" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
     <PackageReference Include="NSwag.Annotations" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Migrations\*.sql" />
   </ItemGroup>
 </Project>

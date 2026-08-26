@@ -19,7 +19,7 @@ public static class OrdersModule
 
     public static IServiceCollection AddOrdersModule(this IServiceCollection services)
     {
-        services.AddSingleton<IOrderStore, InMemoryOrderStore>();
+        services.AddSingleton<IOrderStore, SqliteOrderStore>();
         services.AddTransient<BatchCreateOrdersValidator>();
         services.AddTransient(
             serviceProvider => new BatchCreateOrdersHandler(

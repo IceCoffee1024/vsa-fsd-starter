@@ -16,7 +16,7 @@ public sealed class GetOrderEndpointTests
     [Fact]
     public async Task Get_returns_the_created_order()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = TestServerFactory.CreateAuthenticatedClient(server);
         var created = await OrderEndpointTestHelper.CreateOrderAsync(
             server,
@@ -39,7 +39,7 @@ public sealed class GetOrderEndpointTests
     [Fact]
     public async Task Get_returns_not_found_for_an_unknown_order()
     {
-        using var server = TestServer.Create<Startup>();
+        using var server = TestServerFactory.Create();
         using var client = TestServerFactory.CreateAuthenticatedClient(server);
         var id = Guid.Parse("898001f1-8a22-45f9-82b0-bfa40520eb4e");
 
