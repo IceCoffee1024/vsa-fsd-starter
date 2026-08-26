@@ -38,9 +38,7 @@ public sealed partial class OrdersController
             return this.ValidationProblem(errors);
         }
 
-        var response = await _batchDeleteHandler
-            .HandleAsync(request, cancellationToken)
-            .ConfigureAwait(false);
+        var response = await _batchDeleteHandler.HandleAsync(request, cancellationToken);
 
         return Ok(response);
     }

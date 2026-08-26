@@ -17,9 +17,7 @@ public sealed class ListOrdersHandler
     public async Task<ListOrdersResponse> HandleAsync(
         CancellationToken cancellationToken)
     {
-        var orders = await _orders
-            .ListAsync(cancellationToken)
-            .ConfigureAwait(false);
+        var orders = await _orders.ListAsync(cancellationToken);
 
         var items = orders
             .Select(

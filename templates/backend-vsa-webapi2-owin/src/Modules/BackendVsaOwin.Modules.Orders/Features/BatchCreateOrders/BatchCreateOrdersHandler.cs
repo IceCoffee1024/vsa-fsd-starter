@@ -30,14 +30,12 @@ public sealed class BatchCreateOrdersHandler
         CancellationToken cancellationToken)
     {
         var requestItems = request.Orders!;
-        var customers = await _customers
-            .FindManyAsync(
-                requestItems
-                    .Select(item => item!.CustomerId)
-                    .Distinct()
-                    .ToArray(),
-                cancellationToken)
-            .ConfigureAwait(false);
+        var customers = await _customers.FindManyAsync(
+            requestItems
+                .Select(item => item!.CustomerId)
+                .Distinct()
+                .ToArray(),
+            cancellationToken);
         var errors = new Dictionary<string, string[]>();
 
         for (var index = 0; index < requestItems.Length; index++)
@@ -78,9 +76,7 @@ public sealed class BatchCreateOrdersHandler
                 });
         }
 
-        await _orders
-            .AddManyAsync(orders, cancellationToken)
-            .ConfigureAwait(false);
+        await _orders.AddManyAsync(orders, cancellationToken);
 
         return BatchCreateOrdersResult.Success(
             new BatchCreateOrdersResponse(responseItems));

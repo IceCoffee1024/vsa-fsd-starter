@@ -38,9 +38,7 @@ public sealed partial class CustomersController
             return this.ValidationProblem(errors);
         }
 
-        var response = await _createHandler
-            .HandleAsync(request, cancellationToken)
-            .ConfigureAwait(false);
+        var response = await _createHandler.HandleAsync(request, cancellationToken);
 
         return CreatedAtRoute(
             "GetCustomerById",

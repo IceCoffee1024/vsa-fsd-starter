@@ -20,9 +20,7 @@ internal sealed class CustomerLookup : ICustomerLookup
         Guid customerId,
         CancellationToken cancellationToken)
     {
-        var customer = await _customers
-            .GetAsync(customerId, cancellationToken)
-            .ConfigureAwait(false);
+        var customer = await _customers.GetAsync(customerId, cancellationToken);
 
         return customer is null
             ? null
@@ -33,9 +31,7 @@ internal sealed class CustomerLookup : ICustomerLookup
         IReadOnlyCollection<Guid> customerIds,
         CancellationToken cancellationToken)
     {
-        var customers = await _customers
-            .GetManyAsync(customerIds, cancellationToken)
-            .ConfigureAwait(false);
+        var customers = await _customers.GetManyAsync(customerIds, cancellationToken);
 
         return customers.ToDictionary(
             customer => customer.Id,

@@ -52,9 +52,7 @@ internal sealed class SchemeAwareAuthenticationFilter : Attribute, IAuthenticati
         public async Task<HttpResponseMessage> ExecuteAsync(
             CancellationToken cancellationToken)
         {
-            var response = await _innerResult
-                .ExecuteAsync(cancellationToken)
-                .ConfigureAwait(false);
+            var response = await _innerResult.ExecuteAsync(cancellationToken);
 
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {

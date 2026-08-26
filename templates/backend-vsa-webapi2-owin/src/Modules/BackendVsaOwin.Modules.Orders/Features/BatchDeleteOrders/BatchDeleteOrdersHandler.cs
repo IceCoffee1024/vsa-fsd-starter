@@ -20,9 +20,7 @@ public sealed class BatchDeleteOrdersHandler
         CancellationToken cancellationToken)
     {
         var ids = request.Ids!;
-        var deletedIds = await _orders
-            .DeleteManyAsync(ids, cancellationToken)
-            .ConfigureAwait(false);
+        var deletedIds = await _orders.DeleteManyAsync(ids, cancellationToken);
         var deletedIdSet = new HashSet<System.Guid>(deletedIds);
         var missingIds = ids
             .Where(id => !deletedIdSet.Contains(id))

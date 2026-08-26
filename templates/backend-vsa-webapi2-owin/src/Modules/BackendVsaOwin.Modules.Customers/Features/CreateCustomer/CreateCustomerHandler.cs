@@ -27,9 +27,7 @@ public sealed class CreateCustomerHandler
             _createId(),
             request.DisplayName!.Trim());
 
-        await _customers
-            .AddAsync(customer, cancellationToken)
-            .ConfigureAwait(false);
+        await _customers.AddAsync(customer, cancellationToken);
 
         return new CreateCustomerResponse
         {

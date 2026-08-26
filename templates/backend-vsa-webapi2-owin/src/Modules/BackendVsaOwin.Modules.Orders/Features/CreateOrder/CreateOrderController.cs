@@ -38,9 +38,7 @@ public sealed partial class OrdersController
             return this.ValidationProblem(errors);
         }
 
-        var result = await _createHandler
-            .HandleAsync(request, cancellationToken)
-            .ConfigureAwait(false);
+        var result = await _createHandler.HandleAsync(request, cancellationToken);
         if (result.Response is null)
         {
             return this.ValidationProblem(result.Errors);

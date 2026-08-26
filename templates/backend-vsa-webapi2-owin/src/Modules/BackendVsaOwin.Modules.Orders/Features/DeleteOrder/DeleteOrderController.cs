@@ -28,9 +28,7 @@ public sealed partial class OrdersController
         Guid id,
         CancellationToken cancellationToken)
     {
-        var deleted = await _deleteHandler
-            .HandleAsync(id, cancellationToken)
-            .ConfigureAwait(false);
+        var deleted = await _deleteHandler.HandleAsync(id, cancellationToken);
 
         return deleted
             ? StatusCode(HttpStatusCode.NoContent)

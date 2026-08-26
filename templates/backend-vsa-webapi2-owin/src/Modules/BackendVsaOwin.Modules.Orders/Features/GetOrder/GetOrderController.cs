@@ -28,9 +28,7 @@ public sealed partial class OrdersController
         Guid id,
         CancellationToken cancellationToken)
     {
-        var response = await _getHandler
-            .HandleAsync(id, cancellationToken)
-            .ConfigureAwait(false);
+        var response = await _getHandler.HandleAsync(id, cancellationToken);
 
         return response is null
             ? OrderNotFound(id)

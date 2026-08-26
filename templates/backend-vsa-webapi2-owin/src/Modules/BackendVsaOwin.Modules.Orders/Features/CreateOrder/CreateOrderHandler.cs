@@ -27,9 +27,7 @@ public sealed class CreateOrderHandler
         CreateOrderRequest request,
         CancellationToken cancellationToken)
     {
-        var customer = await _customers
-            .FindAsync(request.CustomerId, cancellationToken)
-            .ConfigureAwait(false);
+        var customer = await _customers.FindAsync(request.CustomerId, cancellationToken);
         if (customer is null)
         {
             return CreateOrderResult.Failure(
@@ -43,7 +41,7 @@ public sealed class CreateOrderHandler
             customer.DisplayName,
             request.TotalAmount);
 
-        await _orders.AddAsync(order, cancellationToken).ConfigureAwait(false);
+        await _orders.AddAsync(order, cancellationToken);
 
         return CreateOrderResult.Success(
             new CreateOrderResponse

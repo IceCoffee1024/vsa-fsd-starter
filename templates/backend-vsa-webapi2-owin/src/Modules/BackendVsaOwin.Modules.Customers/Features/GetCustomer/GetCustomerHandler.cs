@@ -18,9 +18,7 @@ public sealed class GetCustomerHandler
         Guid id,
         CancellationToken cancellationToken)
     {
-        var customer = await _customers
-            .GetAsync(id, cancellationToken)
-            .ConfigureAwait(false);
+        var customer = await _customers.GetAsync(id, cancellationToken);
 
         return customer is null
             ? null

@@ -18,9 +18,7 @@ public sealed class GetOrderHandler
         Guid id,
         CancellationToken cancellationToken)
     {
-        var order = await _orders
-            .GetAsync(id, cancellationToken)
-            .ConfigureAwait(false);
+        var order = await _orders.GetAsync(id, cancellationToken);
 
         return order is null
             ? null

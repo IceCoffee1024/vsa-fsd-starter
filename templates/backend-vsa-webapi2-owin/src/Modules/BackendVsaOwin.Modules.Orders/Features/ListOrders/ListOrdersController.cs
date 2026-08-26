@@ -20,9 +20,7 @@ public sealed partial class OrdersController
         Description = "Orders returned.")]
     public async Task<IHttpActionResult> List(CancellationToken cancellationToken)
     {
-        var response = await _listHandler
-            .HandleAsync(cancellationToken)
-            .ConfigureAwait(false);
+        var response = await _listHandler.HandleAsync(cancellationToken);
 
         return Ok(response);
     }

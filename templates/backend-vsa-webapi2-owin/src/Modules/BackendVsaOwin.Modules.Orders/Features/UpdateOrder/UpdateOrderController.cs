@@ -44,9 +44,7 @@ public sealed partial class OrdersController
             return this.ValidationProblem(errors);
         }
 
-        var response = await _updateHandler
-            .HandleAsync(id, request, cancellationToken)
-            .ConfigureAwait(false);
+        var response = await _updateHandler.HandleAsync(id, request, cancellationToken);
 
         return response is null
             ? OrderNotFound(id)

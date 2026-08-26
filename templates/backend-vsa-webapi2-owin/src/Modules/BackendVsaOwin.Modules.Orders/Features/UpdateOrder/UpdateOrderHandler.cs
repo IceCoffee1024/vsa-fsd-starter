@@ -19,12 +19,10 @@ public sealed class UpdateOrderHandler
         UpdateOrderRequest request,
         CancellationToken cancellationToken)
     {
-        var order = await _orders
-            .UpdateAsync(
-                id,
-                request.TotalAmount,
-                cancellationToken)
-            .ConfigureAwait(false);
+        var order = await _orders.UpdateAsync(
+            id,
+            request.TotalAmount,
+            cancellationToken);
 
         return order is null
             ? null
