@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>BackendVsaOwin.Modules.Customers</RootNamespace>
+    <AssemblyName>BackendVsaOwin.Modules.Customers</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\BuildingBlocks\BackendVsaOwin.BuildingBlocks.WebApi\BackendVsaOwin.BuildingBlocks.WebApi.csproj" />
+    <ProjectReference Include="..\BackendVsaOwin.Modules.Customers.Contracts\BackendVsaOwin.Modules.Customers.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNet.WebApi.Core" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="NSwag.Annotations" />
+  </ItemGroup>
+</Project>

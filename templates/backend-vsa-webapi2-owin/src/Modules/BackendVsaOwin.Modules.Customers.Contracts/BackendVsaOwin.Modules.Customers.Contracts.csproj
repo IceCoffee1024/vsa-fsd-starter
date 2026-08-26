@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>BackendVsaOwin.Modules.Customers.Contracts</RootNamespace>
+    <AssemblyName>BackendVsaOwin.Modules.Customers.Contracts</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591</NoWarn>
+  </PropertyGroup>
+</Project>
