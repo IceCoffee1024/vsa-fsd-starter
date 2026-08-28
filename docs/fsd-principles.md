@@ -20,6 +20,10 @@ Business-oriented layers are divided into slices such as `order`, `submit-order`
 
 Each slice exposes a deliberate public API. Consumers import through that entry point and do not reach into another slice's internal segments. Public APIs should remain small and should not re-export implementation details for convenience.
 
+## Feature-First User Actions
+
+Within the `features` layer, each slice represents a user-visible intention or business action, such as `create-customer`, `find-customer`, or `batch-delete-orders`. Feature slices own the interaction flow and local UI state, while reusable business models, shared state, and entity representations remain in `entities`. This keeps user actions cohesive without duplicating shared entity logic.
+
 ## Composition Rules
 
 - Pages and widgets may orchestrate multiple lower-level features.

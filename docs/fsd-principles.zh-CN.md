@@ -22,6 +22,10 @@ app -> pages -> widgets -> features -> entities -> shared
 
 每个切片都提供经过明确设计的公共 API。使用方通过该入口导入，不得直接访问其他切片的内部片段。公共 API 应保持精简，不能为了使用方便而重新导出实现细节。
 
+## Feature-first 用户动作
+
+在 `features` 层内，每个切片代表一个用户可见的意图或业务动作，例如 `create-customer`、`find-customer` 或 `batch-delete-orders`。Feature 切片负责交互流程和局部 UI 状态；可复用的业务模型、共享状态和实体表示仍归 `entities` 所有。这样既能保持用户动作的内聚性，也能避免重复共享实体逻辑。
+
 ## 组合规则
 
 - Page 和 widget 可以编排多个较低层级的 feature。
