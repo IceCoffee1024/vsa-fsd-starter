@@ -57,6 +57,12 @@ FSD page 或 widget
 - 当契约和授权规则相同时，一个后端切片可以服务多个前端入口。
 - 读取模型应围绕用例塑形，而不是暴露持久化实体。
 
+## 模块化与 FSD
+
+模块化是一种架构目标，强调相关行为高内聚、依赖关系明确，并将变更范围限制在局部。Feature-Sliced Design 则是支持这一目标的具体前端方法，通过标准层级、面向业务的切片、技术分段和公共 API 组织代码。二者不是互相替代的方案：本仓库使用 FSD 组织 Vue 前端，同时在后端使用 VSA 和模块化单体边界。
+
+社区文章 [Modular Design vs Feature-Sliced Design in Vue 3](https://dev.to/igornosatov_15/slicing-through-complexity-modular-design-vs-feature-sliced-design-in-vue-3-13dh) 可以作为理解这些概念差异的补充材料。它不是本仓库的规范来源；本仓库仍以 [FSD 原则](fsd-principles.zh-CN.md) 和具体模板 README 为准。
+
 ## 接口与数据
 
 前后端项目通过明确的 HTTP API 契约通信。后端负责其已发布 Schema 和兼容性策略；前端在不导入后端实现代码的前提下消费该契约，并负责将传输 DTO 转换为自身的实体或 feature 模型。生成的类型可以减少机械式重复，但不能取代任何一方的领域模型。

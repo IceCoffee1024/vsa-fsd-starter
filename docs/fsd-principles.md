@@ -10,7 +10,7 @@ Frontend templates use the standard dependency direction:
 app -> pages -> widgets -> features -> entities -> shared
 ```
 
-A layer may import only from layers below it. `app` wires global providers and routing; `pages` compose route-level experiences; `widgets` compose substantial interface regions; `features` implement user intentions; `entities` model business concepts; and `shared` contains business-neutral foundations.
+A layer may import only from layers below it. `app` wires global providers, routing, and application-wide styles; `pages` compose route-level experiences; `widgets` compose substantial interface regions; `features` implement user intentions; `entities` model business concepts; and `shared` contains business-neutral foundations.
 
 ## Slices and Segments
 
@@ -31,3 +31,9 @@ Within the `features` layer, each slice represents a user-visible intention or b
 - Entities own reusable business representations but do not orchestrate user workflows.
 - `shared` must not acquire product-specific concepts.
 - A frontend feature does not need a one-to-one backend slice; alignment follows user behavior and API contracts.
+
+## Further Reading
+
+For Vue-specific application architecture guidance, see the official [Vue application architecture article](https://feature-sliced.design/blog/vue-application-architecture). It is supplementary guidance; this document remains the authoritative description of the rules adopted by this repository.
+
+For a community comparison of modular design and FSD in Vue 3, see [Modular Design vs Feature-Sliced Design in Vue 3](https://dev.to/igornosatov_15/slicing-through-complexity-modular-design-vs-feature-sliced-design-in-vue-3-13dh). It is an optional perspective rather than a repository rule.

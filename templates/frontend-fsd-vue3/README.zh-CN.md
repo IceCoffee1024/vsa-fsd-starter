@@ -17,12 +17,14 @@
 
 ```text
 src/
-├── main.ts                      # 应用启动与横切关注点装配
-├── App.vue                      # 应用外壳与主导航
+├── main.ts                      # 转交给 app 层的 Vite 入口
 ├── env.d.ts                     # Vite 环境变量类型声明
 ├── app/
+│   ├── index.ts                 # 应用启动与横切关注点装配
+│   ├── App.vue                  # 应用外壳与主导航
 │   ├── providers/               # Pinia 与未来的应用级 Provider
-│   └── router/                  # 路由和认证守卫
+│   ├── router/                  # 路由和认证守卫
+│   └── styles/                  # 全局 Token、重置与共享样式
 ├── pages/
 │   ├── sign-in/                 # 登录路由级组合
 │   ├── orders/                  # 订单管理路由级组合
@@ -49,7 +51,6 @@ src/
 │   ├── config/                  # 面向运行时的前端配置
 │   ├── lib/                     # 与业务无关的工具
 │   └── ui/                      # 可复用的 UI 基础组件
-└── styles/                      # 全局 Token、重置与共享样式
 ```
 
 | 层级 | 职责 |
@@ -60,7 +61,7 @@ src/
 | `features/` | 聚焦的用户操作及其交互状态。 |
 | `entities/` | 业务模型、共享状态、API 适配和实体级 UI。 |
 | `shared/` | 不包含具体业务语义的可复用能力。 |
-| `styles/` | 全局设计 Token、重置规则和跨组件样式。 |
+| `app/styles/` | 全局设计 Token、重置规则和跨组件样式。 |
 
 依赖按照 `app -> pages -> widgets -> features -> entities -> shared` 向下流动。一个切片可以包含 `api`、`model` 和 `ui` Segment；`index.ts` 是其公共 API，就近放置的 `*.spec.ts` 文件用于验证所属 Store、组件或路由行为。调用方不得直接访问其他切片的内部 Segment。前端拥有自己的 `Order` 模型，并显式完成传输 DTO 到模型的映射。
 
@@ -113,6 +114,10 @@ pnpm dev
 ## 错误契约
 
 `shared/api` 将非成功响应转换为 `ApiError`，并保留 RFC 9457 Problem Details 字段、验证错误和 `traceId`。Feature 与 Widget 显示适合用户查看的信息，同时保留 Trace 标识供支持人员关联排查。
+
+## 参考资料
+
+Vue 专属的 FSD 应用架构实践可参考官方的 [Vue 应用架构文章](https://feature-sliced.design/blog/vue-application-architecture)。该文章用于补充说明本模板的结构与规则；本 README 和仓库 FSD 原则文档仍是本项目的事实来源。
 
 ## 当前范围
 

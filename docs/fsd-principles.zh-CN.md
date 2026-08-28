@@ -12,7 +12,7 @@
 app -> pages -> widgets -> features -> entities -> shared
 ```
 
-每一层只能导入其下方层级。`app` 组装全局 Provider 和路由；`pages` 组合路由级体验；`widgets` 组合规模较大的界面区域；`features` 实现用户意图；`entities` 对业务概念建模；`shared` 包含与业务无关的基础能力。
+每一层只能导入其下方层级。`app` 组装全局 Provider、路由和应用级样式；`pages` 组合路由级体验；`widgets` 组合规模较大的界面区域；`features` 实现用户意图；`entities` 对业务概念建模；`shared` 包含与业务无关的基础能力。
 
 ## 切片与分段
 
@@ -33,3 +33,9 @@ app -> pages -> widgets -> features -> entities -> shared
 - Entity 负责可复用的业务表示，但不编排用户工作流。
 - `shared` 不能引入产品特有的概念。
 - 前端 feature 不需要与后端切片一一对应；二者应按照用户行为和 API 契约对齐。
+
+## 延伸阅读
+
+Vue 应用的具体架构实践可参考官方的 [Vue 应用架构文章](https://feature-sliced.design/blog/vue-application-architecture)。该文章仅作为补充参考；本文件仍是本仓库所采用规则的权威说明。
+
+如需了解 Vue 3 中模块化设计与 FSD 的社区对比，可阅读 [Modular Design vs Feature-Sliced Design in Vue 3](https://dev.to/igornosatov_15/slicing-through-complexity-modular-design-vs-feature-sliced-design-in-vue-3-13dh)。该文章仅提供可选视角，不构成本仓库的架构规则。

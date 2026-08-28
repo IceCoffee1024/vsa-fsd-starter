@@ -17,12 +17,14 @@ A runnable Vue 3 starter that demonstrates Feature-Sliced Design through complet
 
 ```text
 src/
-├── main.ts                      # Application bootstrap and cross-cutting wiring
-├── App.vue                      # Application shell and primary navigation
+├── main.ts                      # Vite entrypoint forwarding to the app layer
 ├── env.d.ts                     # Vite environment type declarations
 ├── app/
+│   ├── index.ts                 # Application bootstrap and cross-cutting wiring
+│   ├── App.vue                  # Application shell and primary navigation
 │   ├── providers/               # Pinia and future app-wide providers
-│   └── router/                  # Routes and authentication guards
+│   ├── router/                  # Routes and authentication guards
+│   └── styles/                  # Global tokens, reset, and shared styles
 ├── pages/
 │   ├── sign-in/                 # Sign-in route composition
 │   ├── orders/                  # Order management route composition
@@ -49,7 +51,6 @@ src/
 │   ├── config/                  # Runtime-facing frontend configuration
 │   ├── lib/                     # Business-neutral utilities
 │   └── ui/                      # Reusable UI primitives
-└── styles/                      # Global tokens, reset, and shared styles
 ```
 
 | Layer | Responsibility |
@@ -60,7 +61,7 @@ src/
 | `features/` | Focused user actions and their interaction state. |
 | `entities/` | Business models, shared state, API adapters, and entity-level UI. |
 | `shared/` | Reusable capabilities without business-specific meaning. |
-| `styles/` | Global design tokens, reset rules, and cross-component styles. |
+| `app/styles/` | Global design tokens, reset rules, and cross-component styles. |
 
 Dependencies point downward through `app -> pages -> widgets -> features -> entities -> shared`. A slice may contain `api`, `model`, and `ui` segments. Its `index.ts` is the public API, while colocated `*.spec.ts` files verify the owning Store, component, or route behavior. Consumers do not reach into another slice's internal segments. The `Order` model is owned by the frontend and is explicitly mapped from transport DTOs.
 
@@ -113,6 +114,10 @@ Signing out clears the local session. The backend does not expose a refresh-toke
 ## Error Contract
 
 `shared/api` converts non-success responses into `ApiError` and preserves RFC 9457 Problem Details fields, validation errors, and `traceId`. Features and widgets render user-safe messages while retaining the trace identifier for support correlation.
+
+## Further Reading
+
+For Vue-specific FSD application guidance, see the official [Vue application architecture article](https://feature-sliced.design/blog/vue-application-architecture). It supplements this template's structure and rules; the README and repository FSD principles remain the source of truth for this project.
 
 ## Current Scope
 

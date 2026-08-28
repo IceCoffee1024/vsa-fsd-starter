@@ -54,6 +54,12 @@ FSD page or widget
 - A backend slice may serve multiple frontend entry points when its contract and authorization rules are the same.
 - Read models should be shaped for the use case rather than exposing persistence entities.
 
+## Modularity and FSD
+
+Modularity is the architectural goal of keeping related behavior cohesive, dependencies explicit, and changes localized. Feature-Sliced Design is a concrete frontend methodology that supports that goal through standardized layers, business-oriented slices, technical segments, and public APIs. They are complementary rather than competing alternatives: this repository uses FSD to organize the Vue frontend while using VSA and modular-monolith boundaries in the backend.
+
+The community article [Modular Design vs Feature-Sliced Design in Vue 3](https://dev.to/igornosatov_15/slicing-through-complexity-modular-design-vs-feature-sliced-design-in-vue-3-13dh) provides a useful comparison of these ideas. It is supplementary reading, not a normative source for this repository; the rules in [FSD Principles](fsd-principles.md) and the concrete template README remain authoritative.
+
 ## Interfaces and Data
 
 Frontend and backend projects communicate through explicit HTTP API contracts. The backend owns its published schema and compatibility policy. The frontend consumes that contract without importing backend implementation code and owns adaptation from transport DTOs into its entity or feature models. Generated types may reduce mechanical duplication, but they do not replace either side's domain model.
