@@ -15,8 +15,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Dapper" />
     <PackageReference Include="Microsoft.AspNet.WebApi.Core" />
     <PackageReference Include="Microsoft.AspNet.WebApi.Owin" />
+    <PackageReference Include="Microsoft.Data.Sqlite" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.Extensions.Logging" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" />
@@ -32,5 +34,9 @@
 
   <ItemGroup>
     <Reference Include="System.Configuration" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Authentication\RefreshTokens\Migrations\*.sql" />
   </ItemGroup>
 </Project>

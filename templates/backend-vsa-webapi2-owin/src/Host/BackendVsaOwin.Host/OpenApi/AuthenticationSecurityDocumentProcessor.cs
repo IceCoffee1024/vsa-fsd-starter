@@ -31,11 +31,12 @@ internal sealed class AuthenticationSecurityDocumentProcessor : IDocumentProcess
                     Password = new OpenApiOAuthFlow
                     {
                         TokenUrl = OAuthEndpoints.TokenPath,
+                        RefreshUrl = OAuthEndpoints.TokenPath,
                         // Scope authorization is intentionally not implemented in this starter.
                         Scopes = new System.Collections.Generic.Dictionary<string, string>(),
                     },
                 },
-                Description = "OAuth2 password grant.",
+                Description = "OAuth2 password grant with rotating refresh tokens.",
             };
 
         // Separate requirement objects mean Basic OR OAuth2, not both at once.

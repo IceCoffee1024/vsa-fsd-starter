@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
 using BackendVsaOwin.Host.Authentication;
+using BackendVsaOwin.Host.Authentication.DataProtection;
+using BackendVsaOwin.Host.Authentication.RefreshTokens;
 using BackendVsaOwin.Host.Composition;
 using BackendVsaOwin.Host.OpenApi;
 using BackendVsaOwin.Host.Persistence;
@@ -11,6 +13,8 @@ using BackendVsaOwin.BuildingBlocks.Persistence.Sqlite;
 using HostApplicationIdentity = BackendVsaOwin.Host.Composition.ApplicationIdentity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Owin.BuilderProperties;
+using Microsoft.Owin.Security.DataProtection;
 using Owin;
 
 namespace BackendVsaOwin.Host;
@@ -35,6 +39,7 @@ public sealed class Startup
             databaseOptions.Pooling);
         var services = new ServiceCollection();
         services.AddSingleton(connectionFactory);
+        services.AddSingleton<IRefreshTokenStore, SqliteRefreshTokenStore>();
         ModuleCatalog.RegisterServices(services);
         services.AddLogging(logging =>
         {
@@ -54,10 +59,13 @@ public sealed class Startup
 
         try
         {
+            app.SetDataProtectionProvider(
+                AesDataProtectionProvider.FromConfiguration(
+                    serviceProvider.GetRequiredService<ILogger<AesDataProtectionProvider>>()));
             SqliteDatabaseInitializer.Initialize(connectionFactory);
             SqliteMigrationRunner.Migrate(
                 connectionFactory,
-                ModuleCatalog.MigrationAssemblies,
+                MigrationCatalog.Assemblies,
                 serviceProvider.GetRequiredService<ILoggerFactory>());
         }
         catch
@@ -78,7 +86,9 @@ public sealed class Startup
             httpConfiguration.Formatters.JsonFormatter.SerializerSettings);
         var credentialValidator = ConfiguredCredentialValidator.FromConfiguration();
         app.UseOAuthAuthorizationServer(
-            OAuthOptionsFactory.CreateAuthorizationServer(credentialValidator));
+            OAuthOptionsFactory.CreateAuthorizationServer(
+                credentialValidator,
+                serviceProvider.GetRequiredService<IRefreshTokenStore>()));
         app.UseOAuthBearerAuthentication(OAuthOptionsFactory.CreateBearer());
         app.UseBasicAuthentication(
             new BasicAuthenticationOptions(HostApplicationIdentity.BasicRealm),
@@ -89,8 +99,8 @@ public sealed class Startup
 
     private static void DisposeOnShutdown(IAppBuilder app, IDisposable disposable)
     {
-        if (app.Properties.TryGetValue("host.OnAppDisposing", out var value)
-            && value is CancellationToken cancellationToken)
+        var cancellationToken = new AppProperties(app.Properties).OnAppDisposing;
+        if (cancellationToken.CanBeCanceled)
         {
             cancellationToken.Register(disposable.Dispose);
         }

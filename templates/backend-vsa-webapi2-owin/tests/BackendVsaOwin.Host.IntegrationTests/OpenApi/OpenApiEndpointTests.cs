@@ -35,6 +35,7 @@ public sealed class OpenApiEndpointTests
         Assert.Contains("application/x-www-form-urlencoded", body);
         Assert.Contains("grant_type", body);
         Assert.Contains("access_token", body);
+        Assert.Contains("refresh_token", body);
         Assert.Contains("token_type", body);
         Assert.Contains("expires_in", body);
         Assert.Contains("error_description", body);
@@ -44,6 +45,7 @@ public sealed class OpenApiEndpointTests
         Assert.Contains("\"flows\"", body);
         Assert.Contains("\"password\"", body);
         Assert.Contains("\"tokenUrl\": \"/oauth/token\"", body);
+        Assert.Contains("\"refreshUrl\": \"/oauth/token\"", body);
         Assert.Contains("\"security\"", body);
         Assert.Contains("\"500\": {", body);
         Assert.Contains("\"Internal server error.\"", body);
@@ -52,6 +54,9 @@ public sealed class OpenApiEndpointTests
 
         var tokenPath = JObject.Parse(body)["paths"]!["/oauth/token"]!["post"]!;
         Assert.Empty((JObject)tokenPath["security"]![0]!);
+        var tokenResponseSchema = tokenPath["responses"]!["200"]!["content"]!["application/json"]!["schema"]!;
+        var requiredProperties = (JArray)tokenResponseSchema["required"]!;
+        Assert.Contains("expires_in", requiredProperties.Values<string>());
         Assert.Contains(
             "application/json",
             tokenPath["responses"]!["400"]!["content"]!.ToString());

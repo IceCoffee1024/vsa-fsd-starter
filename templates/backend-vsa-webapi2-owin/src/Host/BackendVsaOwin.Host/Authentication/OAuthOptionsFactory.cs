@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using BackendVsaOwin.Host.Authentication.RefreshTokens;
 using HostApplicationIdentity = BackendVsaOwin.Host.Composition.ApplicationIdentity;
 using Microsoft.Owin;
 using Microsoft.Owin.Security.OAuth;
@@ -9,11 +10,17 @@ namespace BackendVsaOwin.Host.Authentication;
 internal static class OAuthOptionsFactory
 {
     public static OAuthAuthorizationServerOptions CreateAuthorizationServer(
-        ICredentialValidator credentialValidator)
+        ICredentialValidator credentialValidator,
+        IRefreshTokenStore refreshTokenStore)
     {
         if (credentialValidator is null)
         {
             throw new ArgumentNullException(nameof(credentialValidator));
+        }
+
+        if (refreshTokenStore is null)
+        {
+            throw new ArgumentNullException(nameof(refreshTokenStore));
         }
 
         return new OAuthAuthorizationServerOptions
@@ -22,7 +29,8 @@ internal static class OAuthOptionsFactory
             TokenEndpointPath = new PathString(OAuthEndpoints.TokenPath),
             AllowInsecureHttp = true,
             AccessTokenExpireTimeSpan = TimeSpan.FromHours(1),
-            Provider = new PasswordGrantOAuthProvider(credentialValidator),
+            Provider = new OAuthAuthorizationProvider(credentialValidator),
+            RefreshTokenProvider = new RotatingRefreshTokenProvider(refreshTokenStore),
         };
     }
 

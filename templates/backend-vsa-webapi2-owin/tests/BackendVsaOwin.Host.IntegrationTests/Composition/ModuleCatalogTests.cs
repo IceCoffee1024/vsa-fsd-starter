@@ -1,5 +1,6 @@
 using System.Linq;
 using BackendVsaOwin.Host.Composition;
+using BackendVsaOwin.Host.Persistence;
 using Xunit;
 
 namespace BackendVsaOwin.Host.IntegrationTests.Composition;
@@ -27,5 +28,11 @@ public sealed class ModuleCatalogTests
             .ToArray();
         Assert.Equal(moduleAssemblies, ModuleCatalog.ControllerAssemblies);
         Assert.Equal(moduleAssemblies, ModuleCatalog.MigrationAssemblies);
+        Assert.Equal(
+            typeof(MigrationCatalog).Assembly,
+            MigrationCatalog.Assemblies[0]);
+        Assert.Equal(
+            moduleAssemblies,
+            MigrationCatalog.Assemblies.Skip(1));
     }
 }

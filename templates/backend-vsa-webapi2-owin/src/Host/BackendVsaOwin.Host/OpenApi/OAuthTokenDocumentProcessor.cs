@@ -33,9 +33,9 @@ internal sealed class OAuthTokenDocumentProcessor : IDocumentProcessor
         var operation = new OpenApiOperation
         {
             OperationId = "OAuthToken",
-            Summary = "Issue an OAuth2 bearer token.",
+            Summary = "Issue or refresh an OAuth2 bearer token.",
             Description =
-                "Issues a demo bearer token using the password grant and configured resource-owner credentials.",
+                "Issues a demo bearer token using the password grant, or rotates a refresh token to issue a new token pair.",
             // An empty security requirement object explicitly allows anonymous access.
             Security = new[]
             {
@@ -60,18 +60,13 @@ internal sealed class OAuthTokenDocumentProcessor : IDocumentProcessor
 
     private static OpenApiRequestBody CreateTokenRequestBody()
     {
-        var schema = new JsonSchema
-        {
-            Type = JsonObjectType.Object,
-        };
-        var grantType = AddRequiredStringProperty(schema, "grant_type");
-        grantType.Enumeration.Add("password");
-        AddRequiredStringProperty(schema, "username");
-        AddRequiredStringProperty(schema, "password");
+        var schema = new JsonSchema();
+        schema.OneOf.Add(CreatePasswordGrantSchema());
+        schema.OneOf.Add(CreateRefreshTokenGrantSchema());
 
         var requestBody = new OpenApiRequestBody
         {
-            Description = "OAuth2 password-grant form fields.",
+            Description = "OAuth2 password-grant or refresh-token form fields.",
             IsRequired = true,
         };
         requestBody.Content["application/x-www-form-urlencoded"] =
@@ -106,9 +101,44 @@ internal sealed class OAuthTokenDocumentProcessor : IDocumentProcessor
         };
         AddRequiredStringProperty(schema, OAuthParameters.AccessToken);
         AddRequiredStringProperty(schema, "token_type");
+        AddRequiredStringProperty(schema, OAuthParameters.RefreshToken);
         schema.Properties["expires_in"] = new JsonSchemaProperty
         {
             Type = JsonObjectType.Integer,
+            IsRequired = true,
+        };
+        return schema;
+    }
+
+    private static JsonSchema CreatePasswordGrantSchema()
+    {
+        var schema = new JsonSchema
+        {
+            Type = JsonObjectType.Object,
+        };
+        var grantType = AddRequiredStringProperty(schema, OAuthParameters.GrantType);
+        grantType.Enumeration.Add(OAuthParameters.PasswordGrantType);
+        AddRequiredStringProperty(schema, OAuthParameters.Username);
+        AddRequiredStringProperty(schema, OAuthParameters.Password);
+        schema.Properties[OAuthParameters.ClientId] = new JsonSchemaProperty
+        {
+            Type = JsonObjectType.String,
+        };
+        return schema;
+    }
+
+    private static JsonSchema CreateRefreshTokenGrantSchema()
+    {
+        var schema = new JsonSchema
+        {
+            Type = JsonObjectType.Object,
+        };
+        var grantType = AddRequiredStringProperty(schema, OAuthParameters.GrantType);
+        grantType.Enumeration.Add(OAuthParameters.RefreshTokenGrantType);
+        AddRequiredStringProperty(schema, OAuthParameters.RefreshToken);
+        schema.Properties[OAuthParameters.ClientId] = new JsonSchemaProperty
+        {
+            Type = JsonObjectType.String,
         };
         return schema;
     }

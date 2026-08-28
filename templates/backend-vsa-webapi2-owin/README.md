@@ -37,17 +37,17 @@ The executable Host is organized by responsibility:
 
 ```text
 BackendVsaOwin.Host/
-├── Authentication/   # Basic/OAuth authentication and challenge integration
+├── Authentication/   # Basic/OAuth integration and SQLite-backed refresh tokens
 ├── Composition/      # application identity and Host-owned module descriptors
 ├── OpenApi/          # NSwag configuration and document processors
-├── Persistence/      # database path configuration
+├── Persistence/      # database path and application migration ordering
 ├── WebApi/           # Web API configuration, discovery, DI, and exception handling
 ├── App.config
 ├── Program.cs
 └── Startup.cs
 ```
 
-The Host owns `WebApp.Start`, the OWIN pipeline, the Microsoft DI container, Web API configuration, NSwag, database migration orchestration, and module composition. Its explicit, Host-owned module descriptors define each module's assembly, service-registration delegate, and dependencies in one ordered catalog. The catalog derives the runtime Controller whitelist and migration order and invokes module service registration, so an unlisted assembly cannot add an endpoint or migration accidentally. No reflection-based module discovery is used. Each business module owns its HTTP actions, request and response models, validation, handlers, domain objects, SQLite Store, and embedded migration scripts. `BackendVsaOwin.BuildingBlocks.WebApi` contains only shared HTTP transport primitives, including RFC 9457 error contracts; it does not contain domain results or business rules. `BackendVsaOwin.BuildingBlocks.Persistence` contains the reusable SQLite connection factory and DbUp runner; module-specific SQL and Stores remain inside their owning module. The custom Web API dependency resolver creates and disposes one `IServiceScope` per request.
+The Host owns `WebApp.Start`, the OWIN pipeline, the Microsoft DI container, Web API configuration, NSwag, authentication, database migration orchestration, and module composition. It also owns the refresh-token Store and migration because token issuance is a Host authentication concern rather than a business module. Its explicit, Host-owned module descriptors define each module's assembly, service-registration delegate, and dependencies in one ordered catalog. The catalog derives the runtime Controller whitelist and module migration order and invokes module service registration, so an unlisted assembly cannot add an endpoint or module migration accidentally. No reflection-based module discovery is used. Each business module owns its HTTP actions, request and response models, validation, handlers, domain objects, SQLite Store, and embedded migration scripts. `BackendVsaOwin.BuildingBlocks.WebApi` contains only shared HTTP transport primitives, including RFC 9457 error contracts; it does not contain domain results or business rules. `BackendVsaOwin.BuildingBlocks.Persistence` contains the reusable SQLite connection factory and DbUp runner; owner-specific SQL and Stores remain with the Host concern or business module that owns them. The custom Web API dependency resolver creates and disposes one `IServiceScope` per request.
 
 Orders references only `Customers.Contracts` and resolves customers through `ICustomerLookup`; it cannot access Customers domain or persistence types. Customers implements that contract, while Host connects the implementation at startup. An order stores `CustomerId` plus a customer-name snapshot so historical order data does not change when the current customer name changes.
 
@@ -90,9 +90,11 @@ Customers and Orders use one SQLite database. The default relative path is resol
 <add key="DatabasePath" value="data/backend-vsa-owin.db" />
 ```
 
-The Host creates the parent directory and application logging pipeline, enables and verifies persistent SQLite WAL mode, and then runs embedded DbUp migrations before accepting traffic. DbUp sends migration discovery, execution, and no-op diagnostics through the same JSON logging provider used by the application. The module catalog validates that every dependency has been declared earlier, then migrations run deterministically in that order: Customers first, then Orders. Both modules share the database's default `SchemaVersions` journal, while each module owns its own numbered SQL scripts under `Migrations/`. Applied scripts are tracked by resource name and must not be edited; add a new numbered script for every schema change.
+The Host creates the parent directory and application logging pipeline, enables and verifies persistent SQLite WAL mode, and then runs embedded DbUp migrations before accepting traffic. DbUp sends migration discovery, execution, and no-op diagnostics through the same JSON logging provider used by the application. The Host authentication migration creates refresh-token storage first. The module catalog then validates that every dependency has been declared earlier and its migrations run deterministically in that order: Customers first, then Orders. All owners share the database's default `SchemaVersions` journal, while each owns its numbered SQL scripts under `Migrations/`. Applied scripts are tracked by resource name and must not be edited; add a new numbered script for every schema change.
 
 Each Store operation opens and disposes its own connection. `Foreign Keys=True` and an explicit 30-second lock-wait timeout are applied to every connection; deployments with stricter latency requirements can override the timeout when constructing the connection factory. Module Stores use Dapper only for parameterized runtime SQL and row materialization. Their private persistence rows keep SQLite GUID values as canonical strings for explicit domain conversion while mapping amount `TEXT` directly to `decimal`; immutable domain objects remain independent of Dapper. `orders.customer_id` references `customers.id` with `ON DELETE RESTRICT` and `ON UPDATE RESTRICT`; application validation through `ICustomerLookup` remains the user-facing check, and the foreign key is the final integrity guard. Microsoft.Data.Sqlite stores order `decimal` values as `TEXT`, preserving their complete precision without SQLite `REAL` round-trip loss. Batch creation and deletion execute in short, explicitly controlled database transactions.
+
+Order updates also read the updated snapshot inside the same transaction before committing, so a concurrent update cannot change the response between the write and its read-back.
 
 ## HTTP Endpoints
 
@@ -115,16 +117,19 @@ Each Store operation opens and disposes its own connection. `Foreign Keys=True` 
 
 The template supports two alternative authentication schemes for the same protected Web API operations: Katana Basic authentication and OAuth2 bearer authentication. Swagger UI and its OpenAPI document are registered before the authentication middleware and remain public; `/oauth/token` is handled by the OAuth authorization-server middleware and remains available without Basic authentication. A global Web API `AuthorizeAttribute` requires an authenticated identity for every API endpoint. The generated OpenAPI document declares both schemes as separate security requirements, which means Basic OR OAuth2, so Swagger UI displays lock icons for either scheme and is configured with the application name for its OAuth2 client settings.
 
-`BasicAuthenticationHandler` parses the HTTP header, creates the Katana authentication ticket, and applies the Basic challenge when the Basic scheme is selected. `PasswordGrantOAuthProvider` uses the same `ICredentialValidator` for the OAuth2 resource-owner password grant and creates an opaque bearer token. The default `ConfiguredCredentialValidator` performs fixed-time comparisons against the single credential loaded from `App.config`, so another credential source can replace it without changing either transport component. `BasicAuthenticationOptions` contains only the Basic scheme metadata and Realm, not credentials.
+`BasicAuthenticationHandler` parses the HTTP header, creates the Katana authentication ticket, and applies the Basic challenge when the Basic scheme is selected. `OAuthAuthorizationProvider` uses the same `ICredentialValidator` for the OAuth2 resource-owner password grant and creates an opaque bearer token. It also accepts the refresh-token grant after checking that the public `client_id`, when supplied, matches the original ticket. The default `ConfiguredCredentialValidator` performs fixed-time comparisons against the single credential loaded from `App.config`, so another credential source can replace it without changing either transport component. `BasicAuthenticationOptions` contains only the Basic scheme metadata and Realm, not credentials.
 
 The demo credential is configured in `src/Host/BackendVsaOwin.Host/App.config`:
 
 ```xml
 <add key="Username" value="admin" />
 <add key="Password" value="password" />
+<add key="DataProtectionKey" value="" />
 ```
 
 `ApplicationIdentity` defines the compile-time `ApplicationName`, `OpenApiTitle`, and `BasicRealm` constants. Change those constants when cloning the template for another application; they are intentionally identical in every environment. `Username` and `Password` remain runtime settings shared by the Basic and OAuth2 demonstration flows.
+
+The Host creates its structured logger before calling `app.SetDataProtectionProvider`, which remains before the OAuth middleware. `AesDataProtectionProvider` loads the executable configuration file with `LoadOptions.PreserveWhitespace`. If `DataProtectionKey` is missing or empty, it generates 32 cryptographically random bytes, stores their Base64 representation in the runtime `.exe.config`, and uses those bytes immediately. If a value already exists, it is Base64-decoded, its SHA-256 fingerprint is logged, and it must contain exactly 32 bytes. The provider derives purpose-specific encryption and authentication keys and protects Katana tickets with AES-CBC plus HMAC-SHA256. The generated configuration file must remain persistent and writable for tokens to survive restarts; nodes that validate the same tokens must use the same key. For production, prefer injecting a stable key through a protected deployment configuration rather than relying on first-start generation.
 
 Send credentials with the standard header (for example, `admin:password` encoded as Base64):
 
@@ -140,8 +145,19 @@ Request a demo bearer token with the password grant. This template intentionally
 POST /oauth/token
 Content-Type: application/x-www-form-urlencoded
 
-grant_type=password&username=admin&password=password
+grant_type=password&client_id=public-client&username=admin&password=password
 ```
+
+The successful response contains a one-hour `access_token` and a 30-day `refresh_token`. Exchange the refresh token at the same endpoint; `client_id` must match when the initial request supplied one:
+
+```http
+POST /oauth/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=refresh_token&client_id=public-client&refresh_token=<refresh_token>
+```
+
+Every successful exchange consumes the old refresh token and returns a new one. Reusing a consumed token revokes its entire token family, including its latest replacement. Refresh tokens are random opaque handles; SQLite stores only their SHA-256 hashes and Katana-protected tickets. They remain usable after a Host restart against the same database and protection context.
 
 Use the returned `access_token` on the same API endpoints that accept Basic:
 
@@ -157,7 +173,7 @@ GET /api/orders?access_token=<access_token>
 
 The `Authorization` header takes precedence when both forms are present, including when the header contains an invalid bearer token; the query token is not used as a fallback. Query-string tokens can be captured by server and proxy logs, browser history, monitoring telemetry, and `Referer` headers. Use this compatibility path only over HTTPS, redact `access_token` from logs and telemetry, and prefer the bearer header for ordinary HTTP clients.
 
-`Microsoft.Owin.Security.OAuth` uses Katana's default protected ticket format for this single-process template. The token endpoint, password grant, and shared demonstration credential are not a production identity system; use HTTPS, confidential client authentication, a real user store, token key management, rotation, and a grant suitable for the deployment threat model.
+`Microsoft.Owin.Security.OAuth` uses Katana's ticket format with the Host's AES-256 data protection provider. The token endpoint, password grant, refresh-token rotation, and shared demonstration credential are still not a production identity system. A public `client_id` identifies a client but does not authenticate it. Use HTTPS, appropriate confidential-client or PKCE flows, a real user and client store, protection-key management and rotation, administrative revocation and cleanup, and a grant suitable for the deployment threat model. Replaying a refresh token revokes future refreshes, but already-issued self-contained access tokens remain valid until their one-hour expiry.
 
 HTTP and plaintext credentials are intentional for this local self-hosted demonstration. A deployed service must use HTTPS, secret storage, credential rotation, and an authentication scheme appropriate for its threat model; do not keep the sample password.
 
@@ -216,23 +232,23 @@ A valid batch returns HTTP 200 with `requestedCount`, `deletedCount`, and `missi
 
 - Web API Core 5.3.0 intentionally resolves Web API Client 6.0.0.
 - `Microsoft.Owin.Hosting` and `Microsoft.Owin.Host.HttpListener` provide console self-hosting; this is not an IIS project.
-- `Microsoft.Owin.Security` and `Microsoft.Owin.Security.OAuth` supply the native Katana Basic and OAuth2 authentication options, middleware, per-request handlers, tickets, and challenge lifecycle. `SchemeAwareAuthenticationFilter` selects the OWIN challenge for the incoming scheme; Web API's global `AuthorizeAttribute` separately enforces authentication.
+- `Microsoft.Owin.Security` and `Microsoft.Owin.Security.OAuth` supply the native Katana Basic and OAuth2 authentication options, middleware, per-request handlers, tickets, refresh-token provider, and challenge lifecycle. `SchemeAwareAuthenticationFilter` selects the OWIN challenge for the incoming scheme; Web API's global `AuthorizeAttribute` separately enforces authentication.
 - The Host replaces Web API's default assembly resolver with an explicit Customers/Orders whitelist; integration tests use a separate test startup to add their faulting Controller without exposing the test assembly in production.
 - NSwag serves the API description and UI. Its Newtonsoft schema generator shares the Web API formatter settings so documented property names match runtime JSON. XML documentation and explicit Web API response metadata enrich operation, schema, and response contracts; Controller summaries are also used as OpenAPI tag descriptions. The document post-processor publishes a relative `/` server URL so the document follows the current host and proxy environment. Document processors declare the Basic and OAuth2 security schemes and add the OWIN-handled `/oauth/token` operation under the public `Authentication` tag; the token operation documents OAuth form fields and standard JSON errors and is excluded from the Problem Details media-type rewrite. A global operation processor adds the shared `500` `ProblemDetailsResponse` contract to every generated Web API operation unless that response is explicitly declared; the OWIN token operation intentionally keeps its OAuth error contract. The static-file dependency remains transitive.
 - The small `BackendVsaOwin.BuildingBlocks.WebApi` project adapts RFC 9457 Problem Details to Web API 2. It avoids coupling this .NET Framework template to ASP.NET Core MVC packages while keeping error serialization and media types consistent across modules.
 - `ProblemTypeUris` centralizes the `urn:backend-vsa-owin:problem` namespace and shared validation type. Module-specific types such as order-not-found and customer-not-found remain owned by their modules; the namespace uses the existing colon-delimited contract format.
 - Its global `ModelStateValidationFilter` handles transport binding errors before actions run; feature validators remain responsible for use-case rules and do not depend on Web API `ModelState`.
 - `BackendVsaOwin.BuildingBlocks.Persistence` owns only reusable SQLite connection creation and DbUp orchestration. Customers and Orders retain ownership of their Store implementations and embedded SQL migrations.
-- `Microsoft.Data.Sqlite` provides the SQLite ADO.NET provider, while Dapper removes command and reader boilerplate inside module Stores without owning connections, transactions, migrations, or domain models. DbUp runs forward-only embedded scripts, records them in one shared `SchemaVersions` journal, and writes migration events through the Host's existing Microsoft Extensions Logging provider. The Host explicitly orders module migrations so Orders can add its foreign key after Customers creates the referenced table.
+- `Microsoft.Data.Sqlite` provides the SQLite ADO.NET provider, while Dapper removes command and reader boilerplate inside Stores without owning connections, transactions, migrations, or domain models. DbUp runs forward-only embedded scripts, records them in one shared `SchemaVersions` journal, and writes migration events through the Host's existing Microsoft Extensions Logging provider. The Host authentication migration runs first, followed by the explicitly ordered module migrations, so Orders can add its foreign key after Customers creates the referenced table.
 - `System.Diagnostics.DiagnosticSource` establishes W3C request activities on .NET Framework 4.8. Microsoft Extensions Logging writes JSON-structured exception records to the console; production deployments can replace the provider without changing the exception boundary.
 - Microsoft DI 10.0.10 is the container; compatibility support packages remain transitive.
 - PolySharp 1.13.0 privately supplies internal compiler polyfills for modern C# syntax on `net48`; generated types are not made public, and `required` does not replace HTTP request validation.
 - xUnit.net v3 on Microsoft Testing Platform covers focused slice tests and OWIN TestServer integration tests with isolated temporary SQLite files, without a separate test adapter.
 - `AddManyAsync` owns the atomic batch-create boundary and the SQLite implementation enforces it with a database transaction.
 - `ICustomerLookup` is the deliberately small cross-module API; Orders does not share repositories, entities, or an HTTP loopback with Customers.
-- The custom Basic and OAuth2 schemes deliberately share one credential from `App.config`; `ICredentialValidator` separates credential verification from Katana request processing without introducing a user-store abstraction. Swagger and `/oauth/token` remain public, while downstream Web API requests accept Basic OR Bearer. The password grant, user stores, client authentication, token rotation, and role or policy authorization remain outside this minimal template.
+- The custom Basic and OAuth2 schemes deliberately share one credential from `App.config`; `ICredentialValidator` separates credential verification from Katana request processing without introducing a user-store abstraction. Swagger and `/oauth/token` remain public, while downstream Web API requests accept Basic OR Bearer. SQLite-backed refresh-token rotation demonstrates one-time redemption and replay-family revocation; user stores, confidential-client authentication, authorization-code plus PKCE, access-token revocation, and role or policy authorization remain outside this minimal template.
 - `ApplicationIdentity` centralizes the compile-time application name, OpenAPI title, and Basic authentication Realm so a cloned template has one application-identity source. Assembly names and namespaces remain compile-time project identity and are not runtime settings.
 
 ## Current Limits
 
-The single SQLite file provides durable local persistence, not replication, high availability, or multi-process write coordination. Batch deletion still treats missing IDs as a successful best-effort outcome, although its writes are committed in one transaction. Customer updates and deletes are intentionally absent; the database currently protects referenced customers with `RESTRICT`, so richer referential lifecycle policies remain outside this minimal template. Persistent log aggregation, distributed-trace export, backup automation, and repository-wide automation are also out of scope; the database file must be backed up and protected by the deployment environment. The shared Basic credential and OAuth password grant are demonstration-only authentication boundaries, not a production identity system.
+The single SQLite file provides durable local persistence, not replication, high availability, or multi-process write coordination. Batch deletion still treats missing IDs as a successful best-effort outcome, although its writes are committed in one transaction. Customer updates and deletes are intentionally absent; the database currently protects referenced customers with `RESTRICT`, so richer referential lifecycle policies remain outside this minimal template. Persistent log aggregation, distributed-trace export, backup automation, expired refresh-token cleanup, and repository-wide automation are also out of scope; the database file must be backed up and protected by the deployment environment. The shared Basic credential and OAuth password grant remain demonstration-only authentication boundaries despite refresh-token rotation.

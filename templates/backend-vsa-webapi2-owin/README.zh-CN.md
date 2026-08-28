@@ -39,17 +39,17 @@ tests/                                               # 单元测试和宿主集�
 
 ```text
 BackendVsaOwin.Host/
-├── Authentication/   # Basic/OAuth 认证和 challenge 集成
+├── Authentication/   # Basic/OAuth 集成和 SQLite Refresh Token
 ├── Composition/      # 应用身份和 Host-owned 模块描述符
 ├── OpenApi/          # NSwag 配置和文档处理器
-├── Persistence/      # 数据库路径配置
+├── Persistence/      # 数据库路径和应用迁移顺序
 ├── WebApi/           # Web API 配置、发现、DI 和异常处理
 ├── App.config
 ├── Program.cs
 └── Startup.cs
 ```
 
-Host 负责 `WebApp.Start`、OWIN 管道、Microsoft DI 容器、Web API 配置、NSwag、数据库迁移编排和模块组合。显式的 Host-owned 模块描述符在一个有序目录中统一声明各模块的程序集、服务注册委托和依赖。模块目录负责派生运行时 Controller 白名单与迁移顺序，并调用模块服务注册，因此未列入的程序集不会意外增加端点或迁移。模板不使用基于反射的模块自动发现。每个业务模块负责自身的 HTTP 动作、请求与响应模型、验证、处理器、领域对象、SQLite Store 和嵌入式迁移脚本。`BackendVsaOwin.BuildingBlocks.WebApi` 只包含共享 HTTP 传输层基础类型，包括 RFC 9457 错误契约，不包含领域结果或业务规则。`BackendVsaOwin.BuildingBlocks.Persistence` 包含可复用的 SQLite 连接工厂和 DbUp 执行器；模块专属 SQL 和 Store 仍归各自模块所有。自定义 Web API 依赖解析器为每个请求创建并释放一个 `IServiceScope`。
+Host 负责 `WebApp.Start`、OWIN 管道、Microsoft DI 容器、Web API 配置、NSwag、认证、数据库迁移编排和模块组合。Refresh Token Store 与迁移也归 Host 所有，因为令牌签发属于 Host 认证关注点，而不是业务模块。显式的 Host-owned 模块描述符在一个有序目录中统一声明各模块的程序集、服务注册委托和依赖。模块目录负责派生运行时 Controller 白名单与模块迁移顺序，并调用模块服务注册，因此未列入的程序集不会意外增加端点或模块迁移。模板不使用基于反射的模块自动发现。每个业务模块负责自身的 HTTP 动作、请求与响应模型、验证、处理器、领域对象、SQLite Store 和嵌入式迁移脚本。`BackendVsaOwin.BuildingBlocks.WebApi` 只包含共享 HTTP 传输层基础类型，包括 RFC 9457 错误契约，不包含领域结果或业务规则。`BackendVsaOwin.BuildingBlocks.Persistence` 包含可复用的 SQLite 连接工厂和 DbUp 执行器；专属 SQL 和 Store 保留在其所属的 Host 关注点或业务模块中。自定义 Web API 依赖解析器为每个请求创建并释放一个 `IServiceScope`。
 
 Orders 只引用 `Customers.Contracts`，并通过 `ICustomerLookup` 查询客户；它无法访问 Customers 的领域或持久化类型。Customers 实现该契约，Host 在启动时完成连接。订单保存 `CustomerId` 和客户名称快照，因此当前客户名称的变化不会改写历史订单数据。
 
@@ -92,9 +92,11 @@ Customers 与 Orders 使用同一个 SQLite 数据库。默认相对路径以 Ho
 <add key="DatabasePath" value="data/backend-vsa-owin.db" />
 ```
 
-Host 会创建父目录和应用日志管道，启用并验证持久化的 SQLite WAL 模式，然后在开始接受流量前执行嵌入式 DbUp 迁移。DbUp 会通过应用所用的同一个 JSON 日志 Provider 输出迁移发现、执行和无需更新等诊断信息。模块目录会验证每项依赖都已在前面声明，然后迁移按该顺序确定性执行：先 Customers，后 Orders。两个模块共享数据库默认的 `SchemaVersions` 日志表，同时各模块分别拥有 `Migrations/` 下的编号 SQL 脚本。已执行脚本按资源名称跟踪，不应修改；每次 Schema 变更都应新增一个编号脚本。
+Host 会创建父目录和应用日志管道，启用并验证持久化的 SQLite WAL 模式，然后在开始接受流量前执行嵌入式 DbUp 迁移。DbUp 会通过应用所用的同一个 JSON 日志 Provider 输出迁移发现、执行和无需更新等诊断信息。Host 认证迁移会先创建 Refresh Token 存储；随后模块目录验证每项依赖都已在前面声明，并按该顺序确定性迁移：先 Customers，后 Orders。所有迁移所有者共享数据库默认的 `SchemaVersions` 日志表，同时分别拥有 `Migrations/` 下的编号 SQL 脚本。已执行脚本按资源名称跟踪，不应修改；每次 Schema 变更都应新增一个编号脚本。
 
 每次 Store 操作都会独立打开并释放连接，且每个连接都启用 `Foreign Keys=True` 和显式的 30 秒锁等待超时；对延迟有更严格要求的部署可以在构造连接工厂时覆盖该超时。模块 Store 只使用 Dapper 执行参数化运行时 SQL 和物化行对象。其私有持久化行模型把 SQLite GUID 保持为规范字符串并显式转换为领域类型，同时把金额 `TEXT` 直接映射成 `decimal`；不可变领域对象不依赖 Dapper。`orders.customer_id` 通过 `ON DELETE RESTRICT` 和 `ON UPDATE RESTRICT` 引用 `customers.id`；通过 `ICustomerLookup` 完成的应用验证仍是面向用户的检查，外键是最终的数据完整性保护。Microsoft.Data.Sqlite 把订单 `decimal` 值保存为 `TEXT`，避免 SQLite `REAL` 导致完整精度在往返后丢失。批量新增和批量删除均在显式控制的短事务中执行。
+
+订单更新也会在同一事务内读取更新后的快照再提交，避免并发更新在写入和回读之间改变响应内容。
 
 ## HTTP 端点
 
@@ -117,16 +119,19 @@ Host 会创建父目录和应用日志管道，启用并验证持久化的 SQLit
 
 模板为同一组受保护的 Web API 操作提供两种可选认证方案：Katana Basic 认证和 OAuth2 Bearer 认证。Swagger UI 及其 OpenAPI 文档注册在认证中间件之前，因此保持公开；`/oauth/token` 由 OAuth 授权服务器中间件处理，不需要 Basic 认证。Web API 的全局 `AuthorizeAttribute` 要求每个 API 端点都具备已认证身份。生成的 OpenAPI 文档将两种方案声明为独立的安全要求，表示 Basic 或 OAuth2 二选一，因此 Swagger UI 会显示两种认证方案的锁形图标，并使用应用名称配置 OAuth2 客户端设置。
 
-`BasicAuthenticationHandler` 负责解析 HTTP 请求头、创建 Katana 认证票据，并在选择 Basic 方案时添加 Basic challenge。`PasswordGrantOAuthProvider` 对 OAuth2 资源所有者密码授权复用相同的 `ICredentialValidator`，并签发不透明 Bearer Token。默认的 `ConfiguredCredentialValidator` 会对照从 `App.config` 读取的单一凭据执行固定时间比较，因此更换凭据来源时无需修改任一传输组件。`BasicAuthenticationOptions` 只保存 Basic 方案元数据和 Realm，不保存凭据。
+`BasicAuthenticationHandler` 负责解析 HTTP 请求头、创建 Katana 认证票据，并在选择 Basic 方案时添加 Basic challenge。`OAuthAuthorizationProvider` 对 OAuth2 资源所有者密码授权复用相同的 `ICredentialValidator`，并签发不透明 Bearer Token；它也会在校验公开客户端的 `client_id`（若提供）与原始票据一致后接受 Refresh Token Grant。默认的 `ConfiguredCredentialValidator` 会对照从 `App.config` 读取的单一凭据执行固定时间比较，因此更换凭据来源时无需修改任一传输组件。`BasicAuthenticationOptions` 只保存 Basic 方案元数据和 Realm，不保存凭据。
 
 演示凭据配置在 `src/Host/BackendVsaOwin.Host/App.config` 中：
 
 ```xml
 <add key="Username" value="admin" />
 <add key="Password" value="password" />
+<add key="DataProtectionKey" value="" />
 ```
 
 `ApplicationIdentity` 定义编译期的 `ApplicationName`、`OpenApiTitle` 和 `BasicRealm` 常量。克隆模板用于其他应用时修改这些常量即可；它们有意在所有环境中保持一致。`Username` 和 `Password` 仍然是由 Basic 与 OAuth2 演示流程共享的运行时配置。
+
+Host 先创建结构化日志，再调用 `app.SetDataProtectionProvider`，并且该调用仍位于 OAuth 中间件之前。`AesDataProtectionProvider` 使用 `LoadOptions.PreserveWhitespace` 加载程序可执行文件的配置文件。如果 `DataProtectionKey` 不存在或为空，就生成 32 个密码学安全随机字节，将其 Base64 表示写入运行时 `.exe.config`，并立即使用这组字节；如果已有值，则进行 Base64 解码、记录其 SHA-256 指纹，并要求解码结果严格为 32 字节。Provider 按 purpose 派生独立的加密与认证子密钥，并使用 AES-CBC 加 HMAC-SHA256 保护 Katana 票据。要让令牌跨重启继续有效，生成后的配置文件必须持久且可写；需要验证同一令牌的节点必须使用相同密钥。生产环境应优先通过受保护的部署配置注入稳定密钥，不要依赖首次启动自动生成。
 
 使用标准请求头发送凭据（例如将 `admin:password` 编码为 Base64）：
 
@@ -142,8 +147,19 @@ Authorization: Basic YWRtaW46cGFzc3dvcmQ=
 POST /oauth/token
 Content-Type: application/x-www-form-urlencoded
 
-grant_type=password&username=admin&password=password
+grant_type=password&client_id=public-client&username=admin&password=password
 ```
+
+成功响应包含有效期一小时的 `access_token` 和有效期 30 天的 `refresh_token`。在同一端点兑换刷新令牌；如果初次请求提供了 `client_id`，刷新时必须保持一致：
+
+```http
+POST /oauth/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=refresh_token&client_id=public-client&refresh_token=<refresh_token>
+```
+
+每次成功兑换都会消费旧刷新令牌并返回新令牌。重复使用已消费令牌会撤销整个令牌族，包括最新的替代令牌。刷新令牌是随机、不透明的句柄；SQLite 只保存其 SHA-256 哈希和受 Katana 保护的票据。在同一数据库与保护上下文下重启 Host 后，刷新令牌仍然可用。
 
 将返回的 `access_token` 用于访问同样接受 Basic 的 API：
 
@@ -159,7 +175,7 @@ GET /api/orders?access_token=<access_token>
 
 两种形式同时存在时，`Authorization` 请求头优先；即使请求头中的 Bearer Token 无效，也不会回退使用 Query Token。Query String Token 可能被服务器和代理日志、浏览器历史、监控遥测及 `Referer` 请求头记录。此兼容路径只能通过 HTTPS 使用，日志和遥测必须对 `access_token` 脱敏，普通 HTTP 客户端应优先使用 Bearer 请求头。
 
-`Microsoft.Owin.Security.OAuth` 在这个单进程模板中使用 Katana 默认的受保护票据格式。令牌端点、Password Grant 和共享演示凭据不是生产级身份系统；部署时应使用 HTTPS、机密客户端认证、真实用户存储、令牌密钥管理、凭据轮换，以及符合部署威胁模型的授权模式。
+`Microsoft.Owin.Security.OAuth` 使用 Katana 票据格式和 Host 的 AES-256 数据保护提供器。令牌端点、Password Grant、Refresh Token 轮换和共享演示凭据仍然不是生产级身份系统。公开的 `client_id` 只能标识客户端，不能认证客户端。部署时应使用 HTTPS、合适的机密客户端或 PKCE 流程、真实的用户与客户端存储、保护密钥管理与轮换、管理端撤销与清理，以及符合部署威胁模型的授权模式。刷新令牌重放会阻止后续刷新，但已经签发的自包含 Access Token 仍会有效到一小时后过期。
 
 当前自托管演示有意允许 HTTP 和 App.config 中的明文凭据。部署服务必须使用 HTTPS、安全的机密存储、凭据轮换，以及符合威胁模型的认证方案；不要继续使用示例密码。
 
@@ -218,23 +234,23 @@ GET /api/orders?access_token=<access_token>
 
 - Web API Core 5.3.0 有意解析到 Web API Client 6.0.0。
 - `Microsoft.Owin.Hosting` 和 `Microsoft.Owin.Host.HttpListener` 提供控制台自托管能力；这不是 IIS 项目。
-- `Microsoft.Owin.Security` 和 `Microsoft.Owin.Security.OAuth` 提供 Katana 原生的 Basic 与 OAuth2 认证 Options、中间件、每请求 Handler、认证票据和 challenge 生命周期。`SchemeAwareAuthenticationFilter` 根据请求方案选择 OWIN challenge，Web API 全局 `AuthorizeAttribute` 则独立负责强制认证。
+- `Microsoft.Owin.Security` 和 `Microsoft.Owin.Security.OAuth` 提供 Katana 原生的 Basic 与 OAuth2 认证 Options、中间件、每请求 Handler、认证票据、Refresh Token Provider 和 challenge 生命周期。`SchemeAwareAuthenticationFilter` 根据请求方案选择 OWIN challenge，Web API 全局 `AuthorizeAttribute` 则独立负责强制认证。
 - Host 将 Web API 默认程序集解析器替换为显式的 Customers/Orders 白名单；集成测试使用独立的测试启动配置加入测试异常 Controller，而不会让测试程序集进入生产发现范围。
 - NSwag 提供 API 描述和 UI；其 Newtonsoft Schema 生成器与 Web API Formatter 共用设置，使文档属性名与运行时 JSON 一致。XML 文档与显式 Web API 响应元数据用于完善操作、模型和响应契约，Controller 摘要也会作为 OpenAPI 标签描述。文档后处理器发布相对的 `/` Server URL，使文档能够跟随当前 Host 和代理环境。文档处理器负责声明 Basic 与 OAuth2 安全方案，并将由 OWIN 处理的 `/oauth/token` 操作加入公开的 `Authentication` 标签；令牌操作文档描述 OAuth 表单字段和标准 JSON 错误，同时排除在 Problem Details 媒体类型改写之外。全局操作处理器则为每个生成的 Web API 操作自动追加共享的 `500` `ProblemDetailsResponse` 契约，除非该操作已经显式声明了该响应；OWIN 令牌操作则有意保留 OAuth 错误契约。其静态文件依赖保持为传递依赖。
 - 小型 `BackendVsaOwin.BuildingBlocks.WebApi` 项目负责将 RFC 9457 Problem Details 适配到 Web API 2。它避免让此 .NET Framework 模板耦合 ASP.NET Core MVC 包，同时保持跨模块错误序列化和媒体类型一致。
 - `ProblemTypeUris` 集中管理 `urn:backend-vsa-owin:problem` 命名空间和共享的验证错误类型。`order-not-found`、`customer-not-found` 等模块专属类型仍由各自模块负责；命名空间继续使用现有的冒号分隔契约格式。
 - 其中的全局 `ModelStateValidationFilter` 会在 Action 执行前处理传输层绑定错误；Feature Validator 继续负责用例规则，不依赖 Web API 的 `ModelState`。
 - `BackendVsaOwin.BuildingBlocks.Persistence` 只负责可复用的 SQLite 连接创建和 DbUp 编排。Customers 与 Orders 继续拥有各自的 Store 实现和嵌入式 SQL 迁移。
-- `Microsoft.Data.Sqlite` 提供 SQLite ADO.NET Provider，Dapper 则只在模块 Store 内消除 Command 和 Reader 样板代码，不负责连接、事务、迁移或领域模型。DbUp 执行只向前演进的嵌入式脚本，将记录写入一个共享的 `SchemaVersions` 日志表，并通过 Host 现有的 Microsoft Extensions Logging Provider 输出迁移事件。Host 显式规定模块迁移顺序，使 Orders 能在 Customers 创建被引用表之后添加外键。
+- `Microsoft.Data.Sqlite` 提供 SQLite ADO.NET Provider，Dapper 则只在 Store 内消除 Command 和 Reader 样板代码，不负责连接、事务、迁移或领域模型。DbUp 执行只向前演进的嵌入式脚本，将记录写入一个共享的 `SchemaVersions` 日志表，并通过 Host 现有的 Microsoft Extensions Logging Provider 输出迁移事件。Host 认证迁移最先执行，随后按显式模块顺序迁移，使 Orders 能在 Customers 创建被引用表之后添加外键。
 - `System.Diagnostics.DiagnosticSource` 在 .NET Framework 4.8 上建立 W3C 请求 Activity。Microsoft Extensions Logging 将 JSON 结构化异常记录写入控制台；生产部署可以替换日志 Provider，而无需修改异常边界。
 - Microsoft DI 10.0.10 作为依赖注入容器，兼容性支持包保持为传递依赖。
 - PolySharp 1.13.0 以私有方式为 `net48` 提供现代 C# 语法所需的内部编译器 Polyfill；生成类型不会公开，且 `required` 不会取代 HTTP 请求验证。
 - 基于 Microsoft Testing Platform 的 xUnit.net v3 覆盖针对性切片测试，以及使用隔离临时 SQLite 文件的 OWIN TestServer 集成测试，不需要单独的测试适配器。
 - `AddManyAsync` 负责批量新增的原子边界，SQLite 实现通过数据库事务落实这一保证。
 - `ICustomerLookup` 是有意保持精简的跨模块 API；Orders 不与 Customers 共享仓储、实体，也不通过本机 HTTP 回调 Customers。
-- 自定义 Basic 和 OAuth2 方案有意共享从 `App.config` 读取的一个凭据；`ICredentialValidator` 将凭据验证与 Katana 请求处理分离，但没有提前引入用户存储抽象。Swagger 和 `/oauth/token` 保持公开，后续 Web API 请求接受 Basic 或 Bearer。Password Grant、用户存储、客户端认证、令牌轮换以及角色或策略授权仍不在此最小模板范围内。
+- 自定义 Basic 和 OAuth2 方案有意共享从 `App.config` 读取的一个凭据；`ICredentialValidator` 将凭据验证与 Katana 请求处理分离，但没有提前引入用户存储抽象。Swagger 和 `/oauth/token` 保持公开，后续 Web API 请求接受 Basic 或 Bearer。SQLite 支持的 Refresh Token 轮换用于演示一次性兑换和重放时的令牌族撤销；用户存储、机密客户端认证、Authorization Code + PKCE、Access Token 撤销以及角色或策略授权仍不在此最小模板范围内。
 - `ApplicationIdentity` 集中管理编译期的应用名称、OpenAPI 标题和 Basic 认证 Realm，为克隆模板提供统一的应用身份来源。程序集名称和命名空间属于编译期项目身份，不作为运行时配置。
 
 ## 当前限制
 
-单个 SQLite 文件提供持久化本地存储，但不提供复制、高可用或多进程写入协调。批量删除仍把不存在的 ID 视为成功的尽力处理结果，但其写入会在一个事务中提交。Customers 有意暂未提供更新和删除；数据库当前通过 `RESTRICT` 保护已被引用的客户，因此更完整的引用生命周期策略仍不在此最小模板范围内。持久化日志聚合、分布式 Trace 导出、备份自动化和仓库级自动化同样不在范围内；部署环境必须备份并保护数据库文件。共享 Basic 凭据和 OAuth Password Grant 只是演示用的认证边界，不是生产级身份系统。
+单个 SQLite 文件提供持久化本地存储，但不提供复制、高可用或多进程写入协调。批量删除仍把不存在的 ID 视为成功的尽力处理结果，但其写入会在一个事务中提交。Customers 有意暂未提供更新和删除；数据库当前通过 `RESTRICT` 保护已被引用的客户，因此更完整的引用生命周期策略仍不在此最小模板范围内。持久化日志聚合、分布式 Trace 导出、备份自动化、过期 Refresh Token 清理和仓库级自动化同样不在范围内；部署环境必须备份并保护数据库文件。即使增加了 Refresh Token 轮换，共享 Basic 凭据和 OAuth Password Grant 仍只是演示用认证边界。
