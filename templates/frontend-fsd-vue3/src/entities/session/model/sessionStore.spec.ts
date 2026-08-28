@@ -69,4 +69,52 @@ describe('session store', () => {
       'refresh-two',
     )
   })
+
+  it('refreshes an expired OAuth session restored from browser storage', async () => {
+    storeExpiredOAuthSession()
+    vi.mocked(requestRefreshToken).mockResolvedValue({
+      access_token: 'access-two',
+      refresh_token: 'refresh-two',
+      token_type: 'Bearer',
+      expires_in: 3600,
+    })
+    const store = useSessionStore()
+
+    const authenticated = await store.ensureAuthenticated()
+
+    expect(authenticated).toBe(true)
+    expect(requestRefreshToken).toHaveBeenCalledWith(
+      'refresh-one',
+      'vue-client',
+    )
+    expect(store.oauthToken?.accessToken).toBe('access-two')
+  })
+
+  it('clears an expired restored session when token refresh fails', async () => {
+    storeExpiredOAuthSession()
+    vi.mocked(requestRefreshToken).mockRejectedValue(
+      new Error('Refresh token rejected'),
+    )
+    const store = useSessionStore()
+
+    const authenticated = await store.ensureAuthenticated()
+
+    expect(authenticated).toBe(false)
+    expect(store.isAuthenticated).toBe(false)
+    expect(sessionStorage.getItem('frontend-fsd-vue3.oauth-session')).toBeNull()
+  })
 })
+
+function storeExpiredOAuthSession(): void {
+  sessionStorage.setItem(
+    'frontend-fsd-vue3.oauth-session',
+    JSON.stringify({
+      accessToken: 'access-one',
+      refreshToken: 'refresh-one',
+      tokenType: 'Bearer',
+      expiresAt: Date.now() - 1,
+      clientId: 'vue-client',
+      username: 'admin',
+    }),
+  )
+}

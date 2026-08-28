@@ -1,6 +1,15 @@
 <script setup lang="ts">
-import { nextTick, useTemplateRef, watch } from 'vue'
+import { nextTick, onBeforeUnmount, useTemplateRef, watch } from 'vue'
 import { X } from '@lucide/vue'
+
+const focusableSelector = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',')
 
 const props = withDefaults(
   defineProps<{
@@ -25,16 +34,99 @@ defineSlots<{
 }>()
 
 const panel = useTemplateRef<HTMLElement>('panel')
+let previouslyFocusedElement: HTMLElement | null = null
+let previousBodyOverflow = ''
+let scrollLocked = false
 
 watch(
   () => props.open,
   async (open) => {
     if (open) {
+      previouslyFocusedElement =
+        document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null
+      lockBodyScroll()
       await nextTick()
-      panel.value?.focus()
+      if (props.open) {
+        panel.value?.focus()
+      }
+      return
+    }
+
+    unlockBodyScroll()
+    const focusTarget = previouslyFocusedElement
+    previouslyFocusedElement = null
+    await nextTick()
+    if (!props.open && focusTarget?.isConnected) {
+      focusTarget.focus()
     }
   },
+  { immediate: true },
 )
+
+onBeforeUnmount(() => {
+  unlockBodyScroll()
+  if (previouslyFocusedElement?.isConnected) {
+    previouslyFocusedElement.focus()
+  }
+})
+
+function handleKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape') {
+    emit('close')
+    return
+  }
+  if (event.key !== 'Tab' || !panel.value) {
+    return
+  }
+
+  const focusableElements = Array.from(
+    panel.value.querySelectorAll<HTMLElement>(focusableSelector),
+  ).filter(
+    (element) =>
+      !element.hasAttribute('hidden') &&
+      element.getAttribute('aria-hidden') !== 'true',
+  )
+  const firstElement = focusableElements[0]
+  const lastElement = focusableElements.at(-1)
+
+  if (!firstElement || !lastElement) {
+    event.preventDefault()
+    panel.value.focus()
+    return
+  }
+
+  const activeElement = document.activeElement
+  const activeIndex = focusableElements.indexOf(activeElement as HTMLElement)
+  if (event.shiftKey && activeIndex <= 0) {
+    event.preventDefault()
+    lastElement.focus()
+  } else if (
+    !event.shiftKey &&
+    (activeIndex === -1 || activeIndex === focusableElements.length - 1)
+  ) {
+    event.preventDefault()
+    firstElement.focus()
+  }
+}
+
+function lockBodyScroll(): void {
+  if (scrollLocked) {
+    return
+  }
+  previousBodyOverflow = document.body.style.overflow
+  document.body.style.overflow = 'hidden'
+  scrollLocked = true
+}
+
+function unlockBodyScroll(): void {
+  if (!scrollLocked) {
+    return
+  }
+  document.body.style.overflow = previousBodyOverflow
+  scrollLocked = false
+}
 </script>
 
 <template>
@@ -52,7 +144,7 @@ watch(
       aria-modal="true"
       :aria-label="title"
       tabindex="-1"
-      @keydown.esc="emit('close')"
+      @keydown="handleKeydown"
     >
       <header class="dialog-panel__header">
         <div>

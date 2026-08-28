@@ -67,6 +67,8 @@ The browser calls `/backend/api` and `/backend/oauth/token`. During development,
 
 The defaults in `.env.example` match the Web API 2/OWIN starter, but this frontend remains an independent template. A production deployment must provide its own same-origin gateway, BFF, or API authentication strategy; Vite's development proxy is not part of the production build.
 
+The router uses HTML5 history through `createWebHistory`. In production, the static host or gateway must serve `index.html` for non-file frontend routes such as `/sign-in` and `/orders`. Asset and backend paths, including `/backend`, must bypass this SPA fallback.
+
 `VITE_BACKEND_BASE_URL` is intentionally public and controls the browser-visible backend prefix. Do not place secrets in any `VITE_*` variable.
 
 ## Authentication
@@ -84,4 +86,4 @@ Signing out clears the local session. The backend does not expose a refresh-toke
 
 ## Current Scope
 
-The template covers protected routing, Basic and OAuth sign-in, OAuth refresh-token rotation, local sign-out, order listing and detail retrieval, create, update, delete, batch create, batch delete, client/server validation feedback, selection, confirmation dialogs, and focused Store/component tests. Customer lookup, generated OpenAPI clients, refresh-token revocation, and automated end-to-end browser tests remain deferred.
+The template covers protected routing, Basic and OAuth sign-in, OAuth refresh-token rotation, local sign-out, order listing and detail retrieval, create, update, delete, batch create, batch delete, client/server validation feedback, selection, confirmation dialogs, and focused Store, route-guard, and component tests. Customer lookup, generated OpenAPI clients, refresh-token revocation, and automated end-to-end browser tests remain deferred.
