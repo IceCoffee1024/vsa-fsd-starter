@@ -2,5 +2,10 @@
 **/bin/
 **/obj/
 **/TestResults/
+**/node_modules/
+**/dist/
+**/coverage/
+**/.env.local
+**/.env.*.local
 *.user
 *.suo
