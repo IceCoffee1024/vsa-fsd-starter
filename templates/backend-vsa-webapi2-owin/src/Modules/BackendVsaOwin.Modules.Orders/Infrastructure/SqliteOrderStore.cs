@@ -94,6 +94,7 @@ internal sealed class SqliteOrderStore : IOrderStore
         CancellationToken cancellationToken)
     {
         using var connection = await _connectionFactory.OpenConnectionAsync(cancellationToken);
+        using var transaction = connection.BeginTransaction();
         var affectedRows = await connection.ExecuteAsync(
             new CommandDefinition(
                 "UPDATE orders SET total_amount = @TotalAmount WHERE id = @Id;",
@@ -102,10 +103,22 @@ internal sealed class SqliteOrderStore : IOrderStore
                     Id = id.ToString("D"),
                     TotalAmount = totalAmount,
                 },
+                transaction,
                 cancellationToken: cancellationToken));
-        return affectedRows == 0
-            ? null
-            : await GetAsync(connection, id, cancellationToken);
+
+        if (affectedRows == 0)
+        {
+            transaction.Commit();
+            return null;
+        }
+
+        var updated = await GetAsync(
+            connection,
+            id,
+            cancellationToken,
+            transaction);
+        transaction.Commit();
+        return updated;
     }
 
     public async Task<bool> DeleteAsync(
@@ -170,7 +183,8 @@ internal sealed class SqliteOrderStore : IOrderStore
     private static async Task<Order?> GetAsync(
         SqliteConnection connection,
         Guid id,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        SqliteTransaction? transaction = null)
     {
         var row = await connection.QuerySingleOrDefaultAsync<OrderRow>(
             new CommandDefinition(
@@ -178,6 +192,7 @@ internal sealed class SqliteOrderStore : IOrderStore
                     + "customer_name AS CustomerName, total_amount AS TotalAmount "
                     + "FROM orders WHERE id = @Id;",
                 new { Id = id.ToString("D") },
+                transaction,
                 cancellationToken: cancellationToken));
         return row?.ToDomain();
     }
