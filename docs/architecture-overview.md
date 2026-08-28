@@ -1,6 +1,6 @@
 ---
 state: Current
-last_updated: "2026-08-26"
+last_updated: "2026-08-28"
 ---
 
 [English](architecture-overview.md) | [简体中文](architecture-overview.zh-CN.md)
@@ -9,15 +9,13 @@ last_updated: "2026-08-26"
 
 ## Context and Drivers
 
-This repository teaches and demonstrates how Vertical Slice Architecture (VSA) and Feature-Sliced Design (FSD) can coexist in full-stack systems. It separates reusable guidance, minimal stack-specific starters, and production-oriented examples so that educational business code does not leak into clean templates.
+This repository teaches and demonstrates how Vertical Slice Architecture (VSA) and Feature-Sliced Design (FSD) can coexist in full-stack systems. It separates reusable guidance from minimal stack-specific starters so that each template remains focused and independently adoptable.
 
 ## Repository Boundaries
 
 - `docs/` is the canonical source for rules shared by all stacks.
 - Each completed directory under `templates/` is an independent starter and must document its own runtime and commands.
-- Each completed directory under `examples/` is an independently runnable full-stack application assembled from the shared principles.
-- Templates and examples may reference the documentation, but they must not depend on runtime code from another template or example.
-- An example may copy and adapt template code, but templates must not depend on examples.
+- Templates may reference the documentation, but they must not depend on runtime code from another template.
 - Stack-specific commands, configuration, and troubleshooting stay with their owning project.
 
 ## Components and Responsibilities
@@ -26,9 +24,8 @@ This repository teaches and demonstrates how Vertical Slice Architecture (VSA) a
 | --- | --- |
 | `docs/` | Own cross-stack architecture principles, dependency rules, and verification strategy. |
 | `templates/backend-*` | Demonstrate VSA and modular-monolith boundaries in one backend stack. The Web API 2/OWIN template is currently implemented. |
-| `templates/frontend-*` | Demonstrate FSD dependency direction and public APIs in one frontend stack. |
-| `examples/legacy-ordering/` | Demonstrate end-to-end modernization concerns without turning templates into a sample product. |
-| `scripts/` | Own repository-wide automation after runnable targets exist. |
+| `templates/frontend-*` | Demonstrate FSD dependency direction and public APIs in one frontend stack. The Vue 3 template is currently implemented. |
+| `scripts/` | Reserved for future repository-wide automation. |
 
 The concrete project layout and runtime instructions for the implemented Web API 2/OWIN template are maintained exclusively in the [template README](../templates/backend-vsa-webapi2-owin/README.md).
 
@@ -65,20 +62,19 @@ Frontend and backend projects communicate through explicit HTTP API contracts. T
 
 The Web API 2/OWIN template currently runs as a .NET Framework 4.8 console process self-hosted by Katana on `HttpListener`. Its Host project owns process startup, the OWIN pipeline, dependency injection, Web API configuration, OpenAPI middleware, module composition, database migration ordering, structured logging, and the global exception boundary. An explicit Host-owned descriptor catalog keeps module dependencies, service registration, Controller discovery, and migration order aligned without reflection-based discovery. Customers and Orders each own their HTTP slices, domain state, SQLite Store, and embedded migrations while sharing one database file. A narrowly scoped `BackendVsaOwin.BuildingBlocks.WebApi` project supplies shared Web API 2 transport primitives, including RFC 9457 Problem Details and W3C request tracing, without becoming a home for domain rules. The sibling `BackendVsaOwin.BuildingBlocks.Persistence` project supplies only reusable SQLite connection and DbUp migration infrastructure; module-specific SQL and Stores remain inside their owning modules. Public error responses expose a trace identifier rather than exception details, while Host logs correlate the same identifier with the complete exception. Orders references only the public `Customers.Contracts` assembly and uses `ICustomerLookup` to validate customer identities and capture a customer-name snapshot; it cannot access Customers internals even though the database also enforces the Orders-to-Customers foreign key. Because Web API 2 cannot route the same URI across multiple attribute-routed controller types by HTTP method, action files within each module compose one partial controller while retaining separate handlers and contracts. Exact commands and configuration belong to the [template README](../templates/backend-vsa-webapi2-owin/README.md).
 
-Other templates and the full-stack example remain scaffolds. Each future implementation will own its runtime instructions; full-stack examples will also document their composed startup and deployment flow.
+The Vue 3 template provides an independently runnable FSD frontend with complete Orders CRUD, Basic and OAuth authentication interfaces, protected routing, and refresh-token rotation. Other templates remain scaffolds. Each future implementation will own its runtime instructions and verification flow.
 
 ## Quality Attributes
 
 - **Locality:** a business change should primarily affect one backend slice and the smallest relevant frontend slices.
 - **Replaceability:** stack-specific templates remain independent.
-- **Traceability:** examples link their implementation choices back to the shared rules.
+- **Traceability:** templates link their implementation choices back to the shared rules.
 - **Verifiability:** architecture boundaries are covered by automated checks where the stack supports them.
 
 ## Verification Expectations
 
 - Backend templates cover use-case behavior and infrastructure boundaries.
 - Frontend templates cover feature models, interactions, and public APIs.
-- Full-stack examples cover API contracts and critical end-to-end flows.
 - Static analysis or architecture tests enforce module and FSD dependency rules where practical.
 - A template is described as locally runnable only after its documented build, tests, and startup check pass locally. Release readiness additionally requires those checks to pass in repository automation.
 

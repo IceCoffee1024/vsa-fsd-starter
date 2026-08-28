@@ -8,10 +8,9 @@ A pragmatic, opinionated boilerplate and guideline combining Vertical Slice Arch
 
 - `docs/` contains the architecture principles and boundary rules shared by every implementation.
 - `templates/` is reserved for independent, minimal starters for each supported backend or frontend stack.
-- `examples/` is reserved for complete applications that connect selected backend and frontend templates.
-- `scripts/` is reserved for repository-wide automation once runnable projects are added.
+- `scripts/` is reserved for future repository-wide automation.
 
-The Web API 2/OWIN backend template is implemented and locally verified. The remaining template and example directories are scaffolds rather than runnable applications.
+The Web API 2/OWIN backend and Vue 3 frontend templates are implemented and locally verified. The remaining templates are scaffolds until their stack is addressed.
 
 ## Documentation
 
@@ -24,9 +23,5 @@ The Web API 2/OWIN backend template is implemented and locally verified. The rem
 - [Web API 2 with OWIN on .NET Framework 4.8](templates/backend-vsa-webapi2-owin/README.md) - runnable reference template
 - [ASP.NET Core Minimal API on .NET 10](templates/backend-vsa-aspnetcore/README.md)
 - [Python FastAPI](templates/backend-vsa-fastapi/README.md)
-- [Vue 3](templates/frontend-fsd-vue3/README.md)
+- [Vue 3](templates/frontend-fsd-vue3/README.md) - runnable reference template
 - [React](templates/frontend-fsd-react/README.md)
-
-## Examples
-
-- [Legacy Ordering](examples/legacy-ordering/README.md) - a future Vue 3 and Web API 2/OWIN modernization example

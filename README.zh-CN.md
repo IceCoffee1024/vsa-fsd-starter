@@ -10,10 +10,9 @@
 
 - `docs/` 包含所有实现共享的架构原则和边界规则。
 - `templates/` 用于存放各后端或前端技术栈相互独立的最小启动模板。
-- `examples/` 用于存放连接特定后端与前端模板的完整应用。
-- `scripts/` 用于在可运行项目加入后承载仓库级自动化脚本。
+- `scripts/` 预留给未来的仓库级自动化脚本。
 
-Web API 2/OWIN 后端模板已经实现并通过本地验证。其余模板和示例目录目前只是脚手架，尚不是可运行应用。
+Web API 2/OWIN 后端模板与 Vue 3 前端模板已经实现并通过本地验证。其余模板会保持相互独立，并在对应技术栈开始建设前保留为脚手架。
 
 ## 文档
 
@@ -26,9 +25,5 @@ Web API 2/OWIN 后端模板已经实现并通过本地验证。其余模板和�
 - [基于 .NET Framework 4.8 的 Web API 2 与 OWIN](templates/backend-vsa-webapi2-owin/README.zh-CN.md) - 可运行的参考模板
 - [基于 .NET 10 的 ASP.NET Core Minimal API](templates/backend-vsa-aspnetcore/README.md)
 - [Python FastAPI](templates/backend-vsa-fastapi/README.md)
-- [Vue 3](templates/frontend-fsd-vue3/README.md)
+- [Vue 3](templates/frontend-fsd-vue3/README.zh-CN.md) - 可运行的参考模板
 - [React](templates/frontend-fsd-react/README.md)
-
-## 示例
-
-- [Legacy Ordering](examples/legacy-ordering/README.md) - 规划中的 Vue 3 与 Web API 2/OWIN 现代化改造示例
