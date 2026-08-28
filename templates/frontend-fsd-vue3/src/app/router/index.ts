@@ -39,6 +39,12 @@ export function createAppRouter(
         meta: { requiresAuth: true },
       },
       {
+        path: '/customers',
+        name: 'customers',
+        component: () => import('@/pages/customers'),
+        meta: { requiresAuth: true },
+      },
+      {
         path: '/:pathMatch(.*)*',
         redirect: '/orders',
       },

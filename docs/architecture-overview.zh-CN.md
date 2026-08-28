@@ -65,7 +65,7 @@ FSD page 或 widget
 
 Web API 2/OWIN 模板当前以 .NET Framework 4.8 控制台进程运行，并由 Katana 通过 `HttpListener` 自托管。Host 项目负责进程启动、OWIN 管道、依赖注入、Web API 配置、OpenAPI 中间件、模块组合、数据库迁移顺序、结构化日志和全局异常边界。显式的 Host-owned 描述符目录让模块依赖、服务注册、Controller 发现和迁移顺序保持一致，而不依赖反射自动发现。Customers 与 Orders 分别拥有自身的 HTTP 切片、领域状态、SQLite Store 和嵌入式迁移，同时共享一个数据库文件。职责严格受限的 `BackendVsaOwin.BuildingBlocks.WebApi` 项目提供共享 Web API 2 传输层基础类型，包括 RFC 9457 Problem Details 和 W3C 请求追踪，但不承载领域规则。同级的 `BackendVsaOwin.BuildingBlocks.Persistence` 项目只提供可复用的 SQLite 连接和 DbUp 迁移基础设施；模块专属 SQL 和 Store 仍归各自模块所有。公开错误响应只暴露 Trace 标识而不包含异常详情，Host 日志则使用同一标识关联完整异常。Orders 只引用公开的 `Customers.Contracts` 程序集，并通过 `ICustomerLookup` 验证客户标识和捕获客户名称快照；即使数据库也强制执行 Orders 到 Customers 的外键，它仍无法访问 Customers 的内部实现。由于 Web API 2 无法根据 HTTP 方法把同一个 URI 路由到多个使用属性路由的 Controller 类型，因此每个模块内的动作文件组成一个 `partial` Controller，同时保留独立的处理器和契约。准确命令和配置请参见 [模板 README](../templates/backend-vsa-webapi2-owin/README.zh-CN.md)。
 
-Vue 3 模板提供可独立运行的 FSD 前端，并实现完整 Orders CRUD、Basic 与 OAuth 认证界面、受保护路由和刷新令牌轮换。其他模板仍是脚手架。未来每个实现都将负责自己的运行说明和验证流程。
+Vue 3 模板提供可独立运行的 FSD 前端，并实现完整 Orders CRUD、客户创建与按标识查询、Basic 与 OAuth 认证界面、受保护路由和刷新令牌轮换。Customer 能力遵循当前已发布的后端契约，不虚构尚未支持的列表、更新或删除操作。其他模板仍是脚手架。未来每个实现都将负责自己的运行说明和验证流程。
 
 ## 质量属性
 

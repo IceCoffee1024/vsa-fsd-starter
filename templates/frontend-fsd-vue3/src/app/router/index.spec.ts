@@ -30,6 +30,19 @@ describe('authentication route guard', () => {
     expect(session.ensureAuthenticated).toHaveBeenCalledOnce()
   })
 
+  it('protects the customer workspace with the same authentication guard', async () => {
+    const session = createSession(true, true)
+    const router = createAppRouter({
+      history: createMemoryHistory(),
+      getSession: () => session,
+    })
+
+    await router.push('/customers')
+
+    expect(router.currentRoute.value.name).toBe('customers')
+    expect(session.ensureAuthenticated).toHaveBeenCalledOnce()
+  })
+
   it('redirects an authenticated user away from the guest-only page', async () => {
     const session = createSession(true, true)
     const router = createAppRouter({

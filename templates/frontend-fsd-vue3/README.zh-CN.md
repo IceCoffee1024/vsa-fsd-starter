@@ -2,7 +2,7 @@
 
 # 前端 FSD：Vue 3
 
-一个可运行的 Vue 3 启动模板，通过完整订单管理与 Web API 2/OWIN 模板支持的认证流程演示 Feature-Sliced Design。
+一个可运行的 Vue 3 启动模板，通过完整订单管理、聚焦的客户用例与 Web API 2/OWIN 模板支持的认证流程演示 Feature-Sliced Design。
 
 ## 技术栈
 
@@ -17,24 +17,54 @@
 
 ```text
 src/
-├── app/                         # Pinia Provider、路由和认证守卫
-├── pages/                       # 登录与订单路由级组合
-├── widgets/order-list/          # CRUD 工具栏、选择状态和对话框编排
-├── features/                    # 认证与聚焦的订单操作
+├── main.ts                      # 应用启动与横切关注点装配
+├── App.vue                      # 应用外壳与主导航
+├── env.d.ts                     # Vite 环境变量类型声明
+├── app/
+│   ├── providers/               # Pinia 与未来的应用级 Provider
+│   └── router/                  # 路由和认证守卫
+├── pages/
+│   ├── sign-in/                 # 登录路由级组合
+│   ├── orders/                  # 订单管理路由级组合
+│   └── customers/               # 客户注册表路由级组合
+├── widgets/
+│   └── order-list/              # 订单列表工作流编排
+├── features/
+│   ├── authenticate/
+│   ├── sign-out/
+│   ├── create-order/
+│   ├── view-order/
+│   ├── edit-order/
+│   ├── delete-order/
+│   ├── batch-create-orders/
+│   ├── batch-delete-orders/
+│   ├── create-customer/
+│   └── find-customer/
 ├── entities/
-│   ├── order/                   # Order 模型、API 适配、Store 和表格 UI
-│   └── session/                 # Basic/OAuth API、会话状态和令牌轮换
+│   ├── order/                   # Order 模型、Store、API 和实体级 UI
+│   ├── customer/                # Customer 模型、Store、API 和实体级 UI
+│   └── session/                 # 认证状态和令牌生命周期
 ├── shared/
 │   ├── api/                     # HTTP 与 Problem Details 适配
 │   ├── config/                  # 面向运行时的前端配置
 │   ├── lib/                     # 与业务无关的工具
-│   └── ui/                      # 可复用的对话框基础组件
-└── styles/                      # 全局 Token 和重置样式
+│   └── ui/                      # 可复用的 UI 基础组件
+└── styles/                      # 全局 Token、重置与共享样式
 ```
 
-依赖按照 `app -> pages -> widgets -> features -> entities -> shared` 向下流动。调用方通过切片的 `index.ts` 导入，不直接访问其他切片的内部 Segment。前端拥有自己的 `Order` 模型，并显式完成传输 DTO 到模型的映射。
+| 层级 | 职责 |
+| --- | --- |
+| `app/` | 全局初始化和应用级基础设施。 |
+| `pages/` | 路由级组合，不在其中实现具体用例。 |
+| `widgets/` | 协调多个 Feature 和 Entity 的较大界面区块。 |
+| `features/` | 聚焦的用户操作及其交互状态。 |
+| `entities/` | 业务模型、共享状态、API 适配和实体级 UI。 |
+| `shared/` | 不包含具体业务语义的可复用能力。 |
+| `styles/` | 全局设计 Token、重置规则和跨组件样式。 |
 
-Order Pinia Store 管理共享集合，并应用创建、更新、删除、批量创建和批量删除的成功结果；各 Feature 仍自行管理表单和对话框状态。Session Pinia Store 是认证方式与凭据的单一事实来源。
+依赖按照 `app -> pages -> widgets -> features -> entities -> shared` 向下流动。一个切片可以包含 `api`、`model` 和 `ui` Segment；`index.ts` 是其公共 API，就近放置的 `*.spec.ts` 文件用于验证所属 Store、组件或路由行为。调用方不得直接访问其他切片的内部 Segment。前端拥有自己的 `Order` 模型，并显式完成传输 DTO 到模型的映射。
+
+Order Pinia Store 管理共享集合，并应用创建、更新、删除、批量创建和批量删除的成功结果。Customer Pinia Store 将创建状态与查询状态相互分离，使两个用例可以独立进行或失败而不会覆盖彼此状态。各 Feature 仍自行管理表单状态。Session Pinia Store 是认证方式与凭据的单一事实来源。
 
 ## 开发
 
@@ -86,4 +116,4 @@ pnpm dev
 
 ## 当前范围
 
-模板现已覆盖受保护路由、Basic 与 OAuth 登录、OAuth 刷新令牌轮换、本地退出、订单列表与详情、创建、更新、删除、批量创建、批量删除、客户端与服务端验证反馈、选择、确认对话框，以及聚焦的 Store、路由守卫和组件测试。客户选择、生成式 OpenAPI Client、刷新令牌撤销和自动化端到端浏览器测试仍留待后续阶段。
+模板现已覆盖受保护路由、Basic 与 OAuth 登录、OAuth 刷新令牌轮换、本地退出、完整订单管理、客户创建与按标识查询、客户端与服务端验证反馈、选择、确认对话框，以及聚焦的 Store、路由守卫和组件测试。客户列表与选择、客户更新与删除、生成式 OpenAPI Client、刷新令牌撤销和自动化端到端浏览器测试仍留待后续阶段。当前后端契约尚未提供这些客户用例，因此前端有意不模拟它们。

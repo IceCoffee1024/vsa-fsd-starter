@@ -2,7 +2,7 @@
 
 # Frontend FSD: Vue 3
 
-A runnable Vue 3 starter that demonstrates Feature-Sliced Design through complete order management and the authentication flows supported by the Web API 2/OWIN template.
+A runnable Vue 3 starter that demonstrates Feature-Sliced Design through complete order management, focused customer workflows, and the authentication flows supported by the Web API 2/OWIN template.
 
 ## Stack
 
@@ -17,24 +17,54 @@ A runnable Vue 3 starter that demonstrates Feature-Sliced Design through complet
 
 ```text
 src/
-├── app/                         # Pinia provider, router, and authentication guards
-├── pages/                       # Sign-in and order route composition
-├── widgets/order-list/          # CRUD toolbar, selection, and dialog orchestration
-├── features/                    # Authentication and focused order operations
+├── main.ts                      # Application bootstrap and cross-cutting wiring
+├── App.vue                      # Application shell and primary navigation
+├── env.d.ts                     # Vite environment type declarations
+├── app/
+│   ├── providers/               # Pinia and future app-wide providers
+│   └── router/                  # Routes and authentication guards
+├── pages/
+│   ├── sign-in/                 # Sign-in route composition
+│   ├── orders/                  # Order management route composition
+│   └── customers/               # Customer registry route composition
+├── widgets/
+│   └── order-list/              # Order list workflow orchestration
+├── features/
+│   ├── authenticate/
+│   ├── sign-out/
+│   ├── create-order/
+│   ├── view-order/
+│   ├── edit-order/
+│   ├── delete-order/
+│   ├── batch-create-orders/
+│   ├── batch-delete-orders/
+│   ├── create-customer/
+│   └── find-customer/
 ├── entities/
-│   ├── order/                   # Order model, API adapter, Store, and table UI
-│   └── session/                 # Basic/OAuth API, session state, and token rotation
+│   ├── order/                   # Order model, Store, API, and entity UI
+│   ├── customer/                # Customer model, Store, API, and entity UI
+│   └── session/                 # Authentication state and token lifecycle
 ├── shared/
 │   ├── api/                     # HTTP and Problem Details adaptation
 │   ├── config/                  # Runtime-facing frontend configuration
 │   ├── lib/                     # Business-neutral utilities
-│   └── ui/                      # Reusable dialog primitive
-└── styles/                      # Global tokens and reset
+│   └── ui/                      # Reusable UI primitives
+└── styles/                      # Global tokens, reset, and shared styles
 ```
 
-Dependencies point downward through `app -> pages -> widgets -> features -> entities -> shared`. Consumers import a slice through its `index.ts`; they do not reach into another slice's internal segments. The `Order` model is owned by the frontend and is explicitly mapped from transport DTOs.
+| Layer | Responsibility |
+| --- | --- |
+| `app/` | Global initialization and application-level infrastructure. |
+| `pages/` | Route-level composition without implementing use cases. |
+| `widgets/` | Larger interface blocks that coordinate multiple features and entities. |
+| `features/` | Focused user actions and their interaction state. |
+| `entities/` | Business models, shared state, API adapters, and entity-level UI. |
+| `shared/` | Reusable capabilities without business-specific meaning. |
+| `styles/` | Global design tokens, reset rules, and cross-component styles. |
 
-The Order Pinia store owns the shared collection and applies successful create, update, delete, batch-create, and batch-delete results. Each Feature retains its own form and dialog state. The Session Pinia store is the single source of truth for the selected authentication method and credentials.
+Dependencies point downward through `app -> pages -> widgets -> features -> entities -> shared`. A slice may contain `api`, `model`, and `ui` segments. Its `index.ts` is the public API, while colocated `*.spec.ts` files verify the owning Store, component, or route behavior. Consumers do not reach into another slice's internal segments. The `Order` model is owned by the frontend and is explicitly mapped from transport DTOs.
+
+The Order Pinia store owns the shared collection and applies successful create, update, delete, batch-create, and batch-delete results. The Customer Pinia store keeps create and lookup state independent so either workflow can progress or fail without overwriting the other. Each Feature retains its own form state. The Session Pinia store is the single source of truth for the selected authentication method and credentials.
 
 ## Development
 
@@ -86,4 +116,4 @@ Signing out clears the local session. The backend does not expose a refresh-toke
 
 ## Current Scope
 
-The template covers protected routing, Basic and OAuth sign-in, OAuth refresh-token rotation, local sign-out, order listing and detail retrieval, create, update, delete, batch create, batch delete, client/server validation feedback, selection, confirmation dialogs, and focused Store, route-guard, and component tests. Customer lookup, generated OpenAPI clients, refresh-token revocation, and automated end-to-end browser tests remain deferred.
+The template covers protected routing, Basic and OAuth sign-in, OAuth refresh-token rotation, local sign-out, complete order management, customer creation and lookup by identifier, client/server validation feedback, selection, confirmation dialogs, and focused Store, route-guard, and component tests. Customer listing and selection, customer update and deletion, generated OpenAPI clients, refresh-token revocation, and automated end-to-end browser tests remain deferred. The omitted customer workflows are not present in the current backend contract and are intentionally not simulated in the frontend.

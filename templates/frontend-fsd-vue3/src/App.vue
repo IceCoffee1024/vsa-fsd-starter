@@ -26,6 +26,7 @@ const brandTarget = computed(() =>
         <div v-if="isAuthenticated" class="app-header__actions">
           <nav class="app-nav" aria-label="Primary navigation">
             <RouterLink to="/orders">Orders</RouterLink>
+            <RouterLink to="/customers">Customers</RouterLink>
           </nav>
           <SessionControl />
         </div>
@@ -89,6 +90,12 @@ const brandTarget = computed(() =>
   gap: 22px;
 }
 
+.app-nav {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
 .app-nav a {
   display: inline-flex;
   min-height: 36px;
@@ -111,15 +118,25 @@ const brandTarget = computed(() =>
 
 @media (max-width: 640px) {
   .app-header__inner {
-    padding: 0 18px;
+    padding: 0 14px;
+  }
+
+  .app-brand > span:last-child {
+    display: none;
   }
 
   .app-header__actions {
-    gap: 12px;
+    min-width: 0;
+    gap: 10px;
   }
 
   .app-nav {
-    display: none;
+    gap: 8px;
+  }
+
+  .app-nav a {
+    min-height: 32px;
+    font-size: 12px;
   }
 }
 </style>
