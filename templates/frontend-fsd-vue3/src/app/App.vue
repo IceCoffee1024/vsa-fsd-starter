@@ -2,8 +2,8 @@
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { ClipboardList } from '@lucide/vue'
-import { useSessionStore } from '@/entities/session'
-import { SessionControl } from '@/features/sign-out'
+import { useSessionStore } from '@/shared/auth'
+import SessionControl from './SessionControl.vue'
 
 const session = useSessionStore()
 const { isAuthenticated } = storeToRefs(session)

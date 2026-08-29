@@ -3,8 +3,8 @@ import {
   createWebHistory,
   type RouterHistory,
 } from 'vue-router'
-import { useSessionStore } from '@/entities/session'
-import { pinia } from '../providers/pinia'
+import { useSessionStore } from '@/shared/auth'
+import { pinia } from '../pinia'
 
 interface AuthenticationSession {
   readonly isAuthenticated: boolean

@@ -13,7 +13,10 @@ const orderApi = vi.hoisted(() => ({
   putOrder: vi.fn(),
 }))
 
-vi.mock('@/entities/order/api/orderApi', () => orderApi)
+vi.mock('@/shared/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/shared/api')>()),
+  ...orderApi,
+}))
 
 const customerId = '20000000-0000-4000-8000-000000000001'
 const orderId = '10000000-0000-4000-8000-000000000001'

@@ -11,6 +11,7 @@ A runnable Vue 3 starter that demonstrates Feature-Sliced Design through complet
 - Vue Router
 - Pinia setup stores
 - Vitest, Vue Test Utils, and `@pinia/testing`
+- Steiger architecture checks
 - Lucide Vue icons (`@lucide/vue`)
 
 ## Structure
@@ -22,32 +23,22 @@ src/
 ├── app/
 │   ├── index.ts                 # Application bootstrap and cross-cutting wiring
 │   ├── App.vue                  # Application shell and primary navigation
-│   ├── providers/               # Pinia and future app-wide providers
+│   ├── SessionControl.vue       # Application-wide session actions
+│   ├── pinia.ts                 # Pinia instance
 │   ├── router/                  # Routes and authentication guards
 │   └── styles/                  # Global tokens, reset, and shared styles
 ├── pages/
-│   ├── sign-in/                 # Sign-in route composition
-│   ├── orders/                  # Order management route composition
-│   └── customers/               # Customer registry route composition
-├── widgets/
-│   └── order-list/              # Order list workflow orchestration
-├── features/
-│   ├── authenticate/
-│   ├── sign-out/
-│   ├── create-order/
-│   ├── view-order/
-│   ├── edit-order/
-│   ├── delete-order/
-│   ├── batch-create-orders/
-│   ├── batch-delete-orders/
-│   ├── create-customer/
-│   └── find-customer/
-├── entities/
-│   ├── order/                   # Order model, Store, API, and entity UI
-│   ├── customer/                # Customer model, Store, API, and entity UI
-│   └── session/                 # Authentication state and token lifecycle
+│   ├── sign-in/
+│   │   └── ui/                  # Sign-in page and page-local form
+│   ├── orders/
+│   │   ├── model/               # Order page state and workflows
+│   │   └── ui/                  # Order page, forms, table, and dialogs
+│   └── customers/
+│       ├── model/               # Customer page state and workflows
+│       └── ui/                  # Customer page, forms, and summary
 ├── shared/
-│   ├── api/                     # HTTP and Problem Details adaptation
+│   ├── api/                     # HTTP client, CRUD contracts, and Problem Details
+│   ├── auth/                    # Session state and authentication requests
 │   ├── config/                  # Runtime-facing frontend configuration
 │   ├── lib/                     # Business-neutral utilities
 │   └── ui/                      # Reusable UI primitives
@@ -56,16 +47,15 @@ src/
 | Layer | Responsibility |
 | --- | --- |
 | `app/` | Global initialization and application-level infrastructure. |
-| `pages/` | Route-level composition without implementing use cases. |
-| `widgets/` | Larger interface blocks that coordinate multiple features and entities. |
-| `features/` | Focused user actions and their interaction state. |
-| `entities/` | Business models, shared state, API adapters, and entity-level UI. |
-| `shared/` | Reusable capabilities without business-specific meaning. |
+| `pages/` | Route-level UI, state, validation, and workflows owned by one screen. |
+| `shared/` | Reusable infrastructure, backend CRUD contracts, authentication, and business-neutral UI or utilities; it does not own product workflows. |
 | `app/styles/` | Global design tokens, reset rules, and cross-component styles. |
 
-Dependencies point downward through `app -> pages -> widgets -> features -> entities -> shared`. A slice may contain `api`, `model`, and `ui` segments. Its `index.ts` is the public API, while colocated `*.spec.ts` files verify the owning Store, component, or route behavior. Consumers do not reach into another slice's internal segments. The `Order` model is owned by the frontend and is explicitly mapped from transport DTOs.
+The current template intentionally uses the minimal FSD direction `app -> pages -> shared`. FSD layers are optional: add `features` only for a stable interaction already reused by multiple pages, add `entities` only for a stable domain model with multiple consumers, and avoid `widgets` unless an exceptional reusable composition has a clear boundary. Single-page behavior remains in its page slice even when it contains substantial UI or business flow.
 
-The Order Pinia store owns the shared collection and applies successful create, update, delete, batch-create, and batch-delete results. The Customer Pinia store keeps create and lookup state independent so either workflow can progress or fail without overwriting the other. Each Feature retains its own form state. The Session Pinia store is the single source of truth for the selected authentication method and credentials.
+Each page slice exposes its route component through `index.ts`; code inside that slice uses relative imports. Shared defines a public API per segment, such as `shared/api` and `shared/auth`, and consumers do not reach into segment internals. Domain-based filenames describe their concern instead of using generic names such as `types.ts` or `utils.ts`.
+
+The Order page Store owns its collection and applies successful create, update, delete, batch-create, and batch-delete results. The Customer page Store keeps create and lookup state independent so either workflow can progress or fail without overwriting the other. Forms keep local interaction state. CRUD request functions and wire types live in `shared/api`; the application-wide Session Store and token lifecycle live in `shared/auth`.
 
 ## Development
 
@@ -78,6 +68,7 @@ Install and verify the project:
 
 ```powershell
 pnpm install
+pnpm check:architecture
 pnpm typecheck
 pnpm test
 pnpm build
@@ -113,7 +104,7 @@ Signing out clears the local session. The backend does not expose a refresh-toke
 
 ## Error Contract
 
-`shared/api` converts non-success responses into `ApiError` and preserves RFC 9457 Problem Details fields, validation errors, and `traceId`. Features and widgets render user-safe messages while retaining the trace identifier for support correlation.
+`shared/api` converts non-success responses into `ApiError` and preserves RFC 9457 Problem Details fields, validation errors, and `traceId`. Page UI renders user-safe messages while retaining the trace identifier for support correlation.
 
 ## Further Reading
 

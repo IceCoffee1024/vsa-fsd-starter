@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { CreateCustomerForm } from '@/features/create-customer'
-import { FindCustomerForm } from '@/features/find-customer'
+import CreateCustomerForm from './CreateCustomerForm.vue'
+import FindCustomerForm from './FindCustomerForm.vue'
 </script>
 
 <template>

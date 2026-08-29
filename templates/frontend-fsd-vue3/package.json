@@ -11,6 +11,7 @@
     "dev": "vite",
     "build": "pnpm run typecheck && vite build",
     "preview": "vite preview",
+    "check:architecture": "steiger src",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "vue-tsc --noEmit -p tsconfig.app.json"
@@ -27,6 +28,7 @@
     "@vitejs/plugin-vue": "^6.0.8",
     "@vue/test-utils": "^2.5.0",
     "jsdom": "^30.0.1",
+    "steiger": "^0.6.0",
     "typescript": "^5.9.3",
     "vite": "^8.2.2",
     "vitest": "^4.1.11",

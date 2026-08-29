@@ -8,7 +8,10 @@ const customerApi = vi.hoisted(() => ({
   postCustomer: vi.fn(),
 }))
 
-vi.mock('@/entities/customer/api/customerApi', () => customerApi)
+vi.mock('@/shared/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/shared/api')>()),
+  ...customerApi,
+}))
 
 const customer = {
   id: '20000000-0000-4000-8000-000000000001',

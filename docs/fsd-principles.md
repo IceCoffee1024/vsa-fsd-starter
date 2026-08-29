@@ -4,33 +4,41 @@
 
 ## Layers
 
-Frontend templates use the standard dependency direction:
+FSD layers are optional. Start with the smallest structure that preserves clear ownership; the current Vue template uses:
 
 ```text
-app -> pages -> widgets -> features -> entities -> shared
+app -> pages -> shared
 ```
 
-A layer may import only from layers below it. `app` wires global providers, routing, and application-wide styles; `pages` compose route-level experiences; `widgets` compose substantial interface regions; `features` implement user intentions; `entities` model business concepts; and `shared` contains business-neutral foundations.
+When confirmed reuse justifies more layers, the full dependency direction is `app -> pages -> widgets -> features -> entities -> shared`. A layer may import only from layers below it, and slices on the same layer do not cross-import. `app` owns bootstrap, routing, global state providers, and application-wide styles. `pages` own route-level UI, state, validation, data loading, and business flows. `shared` owns reusable infrastructure, CRUD contracts, authentication state, business-neutral UI, and utilities, but no product workflow.
+
+Add `features` only for stable user interactions already reused by multiple pages and `entities` only for stable domain models with multiple consumers. The `widgets` layer is discouraged because reusable interface blocks and user flows commonly overlap; keep screen-specific compositions in `pages` unless an exceptional reusable boundary is clear.
 
 ## Slices and Segments
 
-Business-oriented layers are divided into slices such as `order`, `submit-order`, or `checkout`. Segments such as `ui`, `model`, `api`, and `lib` group code by technical purpose inside a slice.
+Business-oriented layers are divided into slices such as `orders`, `submit-order`, or `checkout`. Segments such as `ui`, `model`, `api`, and `lib` group code by purpose inside a slice. `app` and `shared` have segments rather than slices. Name files after their domain concern, such as `orders.ts` or `authentication.ts`, instead of technical buckets such as `types.ts`, `utils.ts`, or `helpers.ts`.
 
 ## Public APIs
 
-Each slice exposes a deliberate public API. Consumers import through that entry point and do not reach into another slice's internal segments. Public APIs should remain small and should not re-export implementation details for convenience.
+Each slice exposes a deliberate public API through `index.ts`. External consumers import through that entry point and do not reach into another slice's internal segments; code inside a slice may use relative imports. Shared has no slices, so each Shared segment exposes its own public API, such as `shared/api` or `shared/auth`.
 
-## Feature-First User Actions
+## Pages First and Deferred Extraction
 
-Within the `features` layer, each slice represents a user-visible intention or business action, such as `create-customer`, `find-customer`, or `batch-delete-orders`. Feature slices own the interaction flow and local UI state, while reusable business models, shared state, and entity representations remain in `entities`. This keeps user actions cohesive without duplicating shared entity logic.
+Place single-page behavior in that Page slice first, including substantial UI, Pinia state, validation, and workflow orchestration. Duplication alone does not require extraction. Extract a Feature or Entity only when the same code is currently used by multiple consumers, those usages do not always change together, and the resulting boundary has one focused responsibility.
+
+Plain CRUD functions and wire types belong in `shared/api`; page-specific state and business flow remain in the Page model. Authentication tokens, login requests, refresh handling, and application-wide session state belong in `shared/auth`. A transport type alone does not justify an Entity, and identity mappings between identical transport and frontend shapes should not be added speculatively.
 
 ## Composition Rules
 
-- Pages and widgets may orchestrate multiple lower-level features.
-- Features express reusable user intentions, not every visual component or API call.
-- Entities own reusable business representations but do not orchestrate user workflows.
-- `shared` must not acquire product-specific concepts.
+- Pages may orchestrate their own components, state, API calls, and any extracted lower-level slices.
+- Features express reusable user intentions, not every visual component, form, or API call.
+- Entities own confirmed reusable domain behavior, not CRUD wrappers or transport types alone.
+- `shared` may contain application-aware contracts and configuration but must not own product workflows or domain calculations.
 - A frontend feature does not need a one-to-one backend slice; alignment follows user behavior and API contracts.
+
+## Enforcement
+
+The Vue template runs the official Steiger linter with `pnpm check:architecture`. Architecture checking is part of the documented verification sequence alongside type checking, tests, and the production build.
 
 ## Further Reading
 

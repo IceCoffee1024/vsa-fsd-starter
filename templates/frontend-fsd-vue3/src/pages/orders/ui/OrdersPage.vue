@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { CreateOrderForm } from '@/features/create-order'
-import { OrderListWidget } from '@/widgets/order-list'
+import CreateOrderForm from './CreateOrderForm.vue'
+import OrderList from './OrderList.vue'
 </script>
 
 <template>
@@ -17,7 +17,7 @@ import { OrderListWidget } from '@/widgets/order-list'
 
     <div class="orders-page__workspace">
       <CreateOrderForm />
-      <OrderListWidget />
+      <OrderList />
     </div>
   </div>
 </template>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { SignInForm } from '@/features/authenticate'
+import SignInForm from './SignInForm.vue'
 </script>
 
 <template>

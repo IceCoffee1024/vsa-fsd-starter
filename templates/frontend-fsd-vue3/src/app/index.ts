@@ -1,8 +1,8 @@
 import { createApp } from 'vue'
 import { configureHttpAuthentication } from '@/shared/api'
-import { useSessionStore } from '@/entities/session'
+import { useSessionStore } from '@/shared/auth'
 import App from './App.vue'
-import { pinia } from './providers/pinia'
+import { pinia } from './pinia'
 import { router } from './router'
 import './styles/main.css'
 
