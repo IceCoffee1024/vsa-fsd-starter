@@ -108,7 +108,7 @@ pnpm dev
 
 ## 参考资料
 
-Vue 专属的 FSD 应用架构实践可参考官方的 [Vue 应用架构文章](https://feature-sliced.design/blog/vue-application-architecture)。该文章用于补充说明本模板的结构与规则；本 README 和仓库 FSD 原则文档仍是本项目的事实来源。
+本模板遵循 FSD v2.1，并以当前[官方 FSD 文档](https://fsd.how)作为外部参考。较早的官方 [Vue 应用架构文章](https://feature-sliced.design/blog/vue-application-architecture)仍可作为补充材料，但其中部分示例采用了更早、层级更重的风格。本 README 与仓库 FSD 原则文档仍是模板具体取舍的权威来源。
 
 ## 当前范围
 

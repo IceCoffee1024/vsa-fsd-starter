@@ -108,7 +108,7 @@ Signing out clears the local session. The backend does not expose a refresh-toke
 
 ## Further Reading
 
-For Vue-specific FSD application guidance, see the official [Vue application architecture article](https://feature-sliced.design/blog/vue-application-architecture). It supplements this template's structure and rules; the README and repository FSD principles remain the source of truth for this project.
+This template follows FSD v2.1; use the current [official FSD documentation](https://fsd.how) as the external reference. The older official [Vue application architecture article](https://feature-sliced.design/blog/vue-application-architecture) remains useful supplementary reading, but some examples use an earlier, more layer-heavy style. This README and the repository FSD principles remain authoritative for the template's concrete choices.
 
 ## Current Scope
 

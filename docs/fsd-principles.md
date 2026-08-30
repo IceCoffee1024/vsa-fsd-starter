@@ -2,6 +2,8 @@
 
 # Feature-Sliced Design Principles
 
+This repository adopts Feature-Sliced Design v2.1. The current [official FSD documentation](https://fsd.how) is the normative external reference; the rules below record the repository's deliberate choices within that methodology.
+
 ## Layers
 
 FSD layers are optional. Start with the smallest structure that preserves clear ownership; the current Vue template uses:
@@ -42,6 +44,6 @@ The Vue template runs the official Steiger linter with `pnpm check:architecture`
 
 ## Further Reading
 
-For Vue-specific application architecture guidance, see the official [Vue application architecture article](https://feature-sliced.design/blog/vue-application-architecture). It is supplementary guidance; this document remains the authoritative description of the rules adopted by this repository.
+For the current methodology, use the [official FSD documentation](https://fsd.how). The older official [Vue application architecture article](https://feature-sliced.design/blog/vue-application-architecture) remains useful supplementary reading, but some examples reflect an earlier, more layer-heavy style and do not override this repository's v2.1 choices.
 
 For a community comparison of modular design and FSD in Vue 3, see [Modular Design vs Feature-Sliced Design in Vue 3](https://dev.to/igornosatov_15/slicing-through-complexity-modular-design-vs-feature-sliced-design-in-vue-3-13dh). It is an optional perspective rather than a repository rule.

@@ -4,6 +4,8 @@
 
 > 本文是 [英文原文](fsd-principles.md) 的简体中文翻译。如有内容不一致，以英文原文为准。
 
+本仓库采用 Feature-Sliced Design v2.1。当前[官方 FSD 文档](https://fsd.how)是外部规范来源；下述规则记录本仓库在该方法论范围内的明确取舍。
+
 ## 层级
 
 FSD 层级并非必须全部存在。应从能够保持职责清晰的最小结构开始；当前 Vue 模板采用：
@@ -44,6 +46,6 @@ Vue 模板通过 `pnpm check:architecture` 运行官方 Steiger 检查器。架�
 
 ## 延伸阅读
 
-Vue 应用的具体架构实践可参考官方的 [Vue 应用架构文章](https://feature-sliced.design/blog/vue-application-architecture)。该文章仅作为补充参考；本文件仍是本仓库所采用规则的权威说明。
+当前方法论应以[官方 FSD 文档](https://fsd.how)为准。较早的官方 [Vue 应用架构文章](https://feature-sliced.design/blog/vue-application-architecture)仍可作为补充材料，但其中部分示例体现了更早、层级更重的风格，不能覆盖本仓库基于 v2.1 作出的取舍。
 
 如需了解 Vue 3 中模块化设计与 FSD 的社区对比，可阅读 [Modular Design vs Feature-Sliced Design in Vue 3](https://dev.to/igornosatov_15/slicing-through-complexity-modular-design-vs-feature-sliced-design-in-vue-3-13dh)。该文章仅提供可选视角，不构成本仓库的架构规则。

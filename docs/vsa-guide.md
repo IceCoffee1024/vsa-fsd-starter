@@ -20,7 +20,7 @@ Related slices belong to a business module. A module owns its domain rules and p
 
 ## Minimal Template Standard
 
-Every backend template should eventually contain one small end-to-end slice that demonstrates validation, success and failure responses, persistence-boundary placement, and tests. The example must remain small enough to delete when adopting the template.
+Scaffold-only templates document their intended boundaries without claiming runnable behavior. A runnable reference template must contain at least one end-to-end slice that demonstrates validation, success and failure responses, persistence-boundary placement, and tests. It may grow into several cooperating slices or modules when that is necessary to demonstrate real boundaries. Example capabilities must remain clearly owned and replaceable, so an adopting project can remove or replace a use case or module without untangling unrelated shared internals.
 
 ## Modular Monolith Guidance
 

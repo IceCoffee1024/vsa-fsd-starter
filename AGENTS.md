@@ -6,7 +6,7 @@ When creating a commit, follow the commit message rules in [CONTRIBUTING.md](CON
 
 ## Documentation Synchronization
 
-After changing code, configuration, or Markdown documentation, update affected Markdown documents within the same task and verify before completion that corresponding localized versions remain semantically consistent.
+After changing code, configuration, or Markdown documentation, update affected Markdown documents within the same task. The root README, canonical `docs/*.md` architecture guides, and READMEs for runnable templates require English and Simplified Chinese versions. Scaffold-only READMEs and internal or governance documents may remain single-language. Whenever a localized counterpart exists, verify before completion that both versions remain semantically consistent.
 
 ## Documentation and Comments
 

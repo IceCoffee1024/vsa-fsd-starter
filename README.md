@@ -8,7 +8,6 @@ A pragmatic, opinionated boilerplate and guideline combining Vertical Slice Arch
 
 - `docs/` contains the architecture principles and boundary rules shared by every implementation.
 - `templates/` is reserved for independent, minimal starters for each supported backend or frontend stack.
-- `scripts/` is reserved for future repository-wide automation.
 
 The Web API 2/OWIN backend and Vue 3 frontend templates are implemented and locally verified. The remaining templates are scaffolds until their stack is addressed.
 

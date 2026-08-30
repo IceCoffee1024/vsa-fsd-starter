@@ -131,7 +131,7 @@ Host 会创建父目录和应用日志管道，启用并验证持久化的 SQLit
 
 `ApplicationIdentity` 定义编译期的 `ApplicationName`、`OpenApiTitle` 和 `BasicRealm` 常量。克隆模板用于其他应用时修改这些常量即可；它们有意在所有环境中保持一致。`Username` 和 `Password` 仍然是由 Basic 与 OAuth2 演示流程共享的运行时配置。
 
-Host 先创建结构化日志，再调用 `app.SetDataProtectionProvider`，并且该调用仍位于 OAuth 中间件之前。`AesDataProtectionProvider` 使用 `LoadOptions.PreserveWhitespace` 加载程序可执行文件的配置文件。如果 `DataProtectionKey` 不存在或为空，就生成 32 个密码学安全随机字节，将其 Base64 表示写入运行时 `.exe.config`，并立即使用这组字节；如果已有值，则进行 Base64 解码、记录其 SHA-256 指纹，并要求解码结果严格为 32 字节。Provider 按 purpose 派生独立的加密与认证子密钥，并使用 AES-CBC 加 HMAC-SHA256 保护 Katana 票据。要让令牌跨重启继续有效，生成后的配置文件必须持久且可写；需要验证同一令牌的节点必须使用相同密钥。生产环境应优先通过受保护的部署配置注入稳定密钥，不要依赖首次启动自动生成。
+Host 先创建结构化日志，再调用 `app.SetDataProtectionProvider`，并且该调用仍位于 OAuth 中间件之前。`AesDataProtectionProvider` 使用 `LoadOptions.PreserveWhitespace` 加载程序可执行文件的配置文件。如果 `DataProtectionKey` 不存在或为空，就生成 32 个密码学安全随机字节，将其 Base64 表示写入运行时 `.exe.config`，并立即使用这组字节；如果已有值，则进行 Base64 解码、记录其 SHA-256 指纹，并要求解码结果严格为 32 字节。Provider 按 purpose 派生独立的加密与认证子密钥，并使用 AES-CBC 加 HMAC-SHA256 保护 Katana 票据。要让令牌跨重启继续有效，生成后的配置文件必须持久且可写；需要验证同一令牌的节点必须使用相同密钥。
 
 使用标准请求头发送凭据（例如将 `admin:password` 编码为 Base64）：
 
@@ -173,11 +173,13 @@ Authorization: Bearer <access_token>
 GET /api/orders?access_token=<access_token>
 ```
 
-两种形式同时存在时，`Authorization` 请求头优先；即使请求头中的 Bearer Token 无效，也不会回退使用 Query Token。Query String Token 可能被服务器和代理日志、浏览器历史、监控遥测及 `Referer` 请求头记录。此兼容路径只能通过 HTTPS 使用，日志和遥测必须对 `access_token` 脱敏，普通 HTTP 客户端应优先使用 Bearer 请求头。
+两种形式同时存在时，`Authorization` 请求头优先；即使请求头中的 Bearer Token 无效，也不会回退使用 Query Token。Query String Token 可能通过日志、浏览器历史、遥测和 `Referer` 请求头泄露。应优先使用 Bearer 请求头；如必须使用此兼容路径，则应启用 HTTPS 并对 `access_token` 脱敏。
 
-`Microsoft.Owin.Security.OAuth` 使用 Katana 票据格式和 Host 的 AES-256 数据保护提供器。令牌端点、Password Grant、Refresh Token 轮换和共享演示凭据仍然不是生产级身份系统。公开的 `client_id` 只能标识客户端，不能认证客户端。部署时应使用 HTTPS、合适的机密客户端或 PKCE 流程、真实的用户与客户端存储、保护密钥管理与轮换、管理端撤销与清理，以及符合部署威胁模型的授权模式。刷新令牌重放会阻止后续刷新，但已经签发的自包含 Access Token 仍会有效到一小时后过期。
+### 生产安全边界
 
-当前自托管演示有意允许 HTTP 和 App.config 中的明文凭据。部署服务必须使用 HTTPS、安全的机密存储、凭据轮换，以及符合威胁模型的认证方案；不要继续使用示例密码。
+这个本地自托管演示有意允许在 `App.config` 中保存共享凭据、使用 Password Grant、默认使用明文 HTTP、签发自包含 Access Token，以及兼容 Query String Token。这些选择不构成生产级身份系统；公开的 `client_id` 只能标识客户端，不能认证客户端。
+
+生产部署必须使用 HTTPS、安全的机密存储与轮换、稳定且由节点共享的数据保护密钥、真实的用户与客户端存储，并选择符合客户端性质和威胁模型的流程，例如公开客户端使用 Authorization Code + PKCE，或使用适合机密客户端的流程。同时还需要管理端撤销和过期令牌清理。刷新令牌重放会撤销该令牌族的后续刷新能力，但已经签发的自包含 Access Token 仍会有效到一小时后过期。
 
 先创建客户：
 
@@ -234,7 +236,7 @@ GET /api/orders?access_token=<access_token>
 
 - Web API Core 5.3.0 有意解析到 Web API Client 6.0.0。
 - `Microsoft.Owin.Hosting` 和 `Microsoft.Owin.Host.HttpListener` 提供控制台自托管能力；这不是 IIS 项目。
-- `Microsoft.Owin.Security` 和 `Microsoft.Owin.Security.OAuth` 提供 Katana 原生的 Basic 与 OAuth2 认证 Options、中间件、每请求 Handler、认证票据、Refresh Token Provider 和 challenge 生命周期。`SchemeAwareAuthenticationFilter` 根据请求方案选择 OWIN challenge，Web API 全局 `AuthorizeAttribute` 则独立负责强制认证。
+- `Microsoft.Owin.Security` 提供通用 Katana 认证抽象，项目自定义的 Basic Options、中间件、Handler、认证票据和 challenge 生命周期基于这些抽象实现。`Microsoft.Owin.Security.OAuth` 提供 OAuth 授权服务器与 Bearer 实现，包括 Refresh Token Provider 集成。`SchemeAwareAuthenticationFilter` 根据请求方案选择 OWIN challenge，Web API 全局 `AuthorizeAttribute` 则独立负责强制认证。
 - Host 将 Web API 默认程序集解析器替换为显式的 Customers/Orders 白名单；集成测试使用独立的测试启动配置加入测试异常 Controller，而不会让测试程序集进入生产发现范围。
 - NSwag 提供 API 描述和 UI；其 Newtonsoft Schema 生成器与 Web API Formatter 共用设置，使文档属性名与运行时 JSON 一致。XML 文档与显式 Web API 响应元数据用于完善操作、模型和响应契约，Controller 摘要也会作为 OpenAPI 标签描述。文档后处理器发布相对的 `/` Server URL，使文档能够跟随当前 Host 和代理环境。文档处理器负责声明 Basic 与 OAuth2 安全方案，并将由 OWIN 处理的 `/oauth/token` 操作加入公开的 `Authentication` 标签；令牌操作文档描述 OAuth 表单字段和标准 JSON 错误，同时排除在 Problem Details 媒体类型改写之外。全局操作处理器则为每个生成的 Web API 操作自动追加共享的 `500` `ProblemDetailsResponse` 契约，除非该操作已经显式声明了该响应；OWIN 令牌操作则有意保留 OAuth 错误契约。其静态文件依赖保持为传递依赖。
 - 小型 `BackendVsaOwin.BuildingBlocks.WebApi` 项目负责将 RFC 9457 Problem Details 适配到 Web API 2。它避免让此 .NET Framework 模板耦合 ASP.NET Core MVC 包，同时保持跨模块错误序列化和媒体类型一致。
@@ -248,9 +250,9 @@ GET /api/orders?access_token=<access_token>
 - 基于 Microsoft Testing Platform 的 xUnit.net v3 覆盖针对性切片测试，以及使用隔离临时 SQLite 文件的 OWIN TestServer 集成测试，不需要单独的测试适配器。
 - `AddManyAsync` 负责批量新增的原子边界，SQLite 实现通过数据库事务落实这一保证。
 - `ICustomerLookup` 是有意保持精简的跨模块 API；Orders 不与 Customers 共享仓储、实体，也不通过本机 HTTP 回调 Customers。
-- 自定义 Basic 和 OAuth2 方案有意共享从 `App.config` 读取的一个凭据；`ICredentialValidator` 将凭据验证与 Katana 请求处理分离，但没有提前引入用户存储抽象。Swagger 和 `/oauth/token` 保持公开，后续 Web API 请求接受 Basic 或 Bearer。SQLite 支持的 Refresh Token 轮换用于演示一次性兑换和重放时的令牌族撤销；用户存储、机密客户端认证、Authorization Code + PKCE、Access Token 撤销以及角色或策略授权仍不在此最小模板范围内。
+- 自定义 Basic 和 OAuth2 方案有意共享从 `App.config` 读取的一个凭据；`ICredentialValidator` 将凭据验证与 Katana 请求处理分离，但没有提前引入用户存储抽象。Swagger 和 `/oauth/token` 保持公开，后续 Web API 请求接受 Basic 或 Bearer。SQLite 支持的 Refresh Token 轮换用于演示一次性兑换和重放时的令牌族撤销。
 - `ApplicationIdentity` 集中管理编译期的应用名称、OpenAPI 标题和 Basic 认证 Realm，为克隆模板提供统一的应用身份来源。程序集名称和命名空间属于编译期项目身份，不作为运行时配置。
 
 ## 当前限制
 
-单个 SQLite 文件提供持久化本地存储，但不提供复制、高可用或多进程写入协调。批量删除仍把不存在的 ID 视为成功的尽力处理结果，但其写入会在一个事务中提交。Customers 有意暂未提供更新和删除；数据库当前通过 `RESTRICT` 保护已被引用的客户，因此更完整的引用生命周期策略仍不在此最小模板范围内。持久化日志聚合、分布式 Trace 导出、备份自动化、过期 Refresh Token 清理和仓库级自动化同样不在范围内；部署环境必须备份并保护数据库文件。即使增加了 Refresh Token 轮换，共享 Basic 凭据和 OAuth Password Grant 仍只是演示用认证边界。
+单个 SQLite 文件提供持久化本地存储，但不提供复制、高可用或多进程写入协调。批量删除仍把不存在的 ID 视为成功的尽力处理结果，但其写入会在一个事务中提交。Customers 有意暂未提供更新和删除；数据库当前通过 `RESTRICT` 保护已被引用的客户，因此更完整的引用生命周期策略仍不在此最小模板范围内。持久化日志聚合、分布式 Trace 导出和备份自动化同样不在范围内；部署环境必须备份并保护数据库文件。

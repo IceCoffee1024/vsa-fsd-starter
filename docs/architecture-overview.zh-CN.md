@@ -1,6 +1,6 @@
 ---
 state: Current
-last_updated: "2026-08-29"
+last_updated: "2026-08-30"
 translation_of: architecture-overview.md
 ---
 
@@ -28,9 +28,8 @@ translation_of: architecture-overview.md
 | `docs/` | 管理跨技术栈的架构原则、依赖规则和验证策略。 |
 | `templates/backend-*` | 在单个后端技术栈中演示 VSA 和模块化单体边界。目前已实现 Web API 2/OWIN 模板。 |
 | `templates/frontend-*` | 在单个前端技术栈中演示 FSD 依赖方向和公共 API。目前已实现 Vue 3 模板。 |
-| `scripts/` | 预留给未来的仓库级自动化。 |
 
-已实现的 Web API 2/OWIN 模板的具体项目布局和运行说明仅由[模板 README](../templates/backend-vsa-webapi2-owin/README.zh-CN.md)维护。
+具体目录、运行说明和技术栈专属决策由已实现模板各自维护：[Web API 2/OWIN](../templates/backend-vsa-webapi2-owin/README.zh-CN.md) 与 [Vue 3](../templates/frontend-fsd-vue3/README.zh-CN.md)。这些 README 是其实现的权威事实来源。
 
 ## 依赖规则
 
@@ -67,11 +66,9 @@ FSD 页面内工作流
 
 前后端项目通过明确的 HTTP API 契约通信。后端负责其已发布 Schema 和兼容性策略；前端在不导入后端实现代码的前提下消费该契约。普通 CRUD 函数和传输类型可以保留在 `shared/api`，Page model 负责页面专属状态与工作流；只有传输形状或语义确实不同时才引入传输到领域的映射。生成的类型可以减少机械式重复，但不能取代经过明确设计的前端所有权。
 
-## 部署与运维
+## 实现状态
 
-Web API 2/OWIN 模板当前以 .NET Framework 4.8 控制台进程运行，并由 Katana 通过 `HttpListener` 自托管。Host 项目负责进程启动、OWIN 管道、依赖注入、Web API 配置、OpenAPI 中间件、模块组合、数据库迁移顺序、结构化日志和全局异常边界。显式的 Host-owned 描述符目录让模块依赖、服务注册、Controller 发现和迁移顺序保持一致，而不依赖反射自动发现。Customers 与 Orders 分别拥有自身的 HTTP 切片、领域状态、SQLite Store 和嵌入式迁移，同时共享一个数据库文件。职责严格受限的 `BackendVsaOwin.BuildingBlocks.WebApi` 项目提供共享 Web API 2 传输层基础类型，包括 RFC 9457 Problem Details 和 W3C 请求追踪，但不承载领域规则。同级的 `BackendVsaOwin.BuildingBlocks.Persistence` 项目只提供可复用的 SQLite 连接和 DbUp 迁移基础设施；模块专属 SQL 和 Store 仍归各自模块所有。公开错误响应只暴露 Trace 标识而不包含异常详情，Host 日志则使用同一标识关联完整异常。Orders 只引用公开的 `Customers.Contracts` 程序集，并通过 `ICustomerLookup` 验证客户标识和捕获客户名称快照；即使数据库也强制执行 Orders 到 Customers 的外键，它仍无法访问 Customers 的内部实现。由于 Web API 2 无法根据 HTTP 方法把同一个 URI 路由到多个使用属性路由的 Controller 类型，因此每个模块内的动作文件组成一个 `partial` Controller，同时保留独立的处理器和契约。准确命令和配置请参见 [模板 README](../templates/backend-vsa-webapi2-owin/README.zh-CN.md)。
-
-Vue 3 模板提供可独立运行的 FSD 前端，并实现完整 Orders CRUD、客户创建与按标识查询、Basic 与 OAuth 认证界面、受保护路由和刷新令牌轮换。它有意采用最小 `app -> pages -> shared` 结构：单页面工作流保留在 Page 切片，CRUD 契约位于 `shared/api`，应用级会话处理位于 `shared/auth`；Steiger 负责强制检查这些架构边界。Customer 能力遵循当前已发布的后端契约，不虚构尚未支持的列表、更新或删除操作。其他模板仍是脚手架。未来每个实现都将负责自己的运行说明和验证流程。
+Web API 2/OWIN 后端与 Vue 3 前端是可独立运行的参考模板。后端演示用例切片、显式模块契约、Host 负责的组合、共享技术基础组件、持久化、认证以及可观测的错误处理；前端演示最小 `app -> pages -> shared` FSD 结构、公共 API、页面拥有的工作流、应用级会话处理和架构约束。准确能力、目录、命令与运行限制由各自模板 README 维护。其他模板目录仍是脚手架，尚不声明可运行行为。
 
 ## 质量属性
 
@@ -85,9 +82,9 @@ Vue 3 模板提供可独立运行的 FSD 前端，并实现完整 Orders CRUD、
 - 后端模板覆盖用例行为和基础设施边界。
 - 前端模板覆盖 Page model、交互、Shared 契约和公共 API。
 - 在可行时，使用静态分析或架构测试强制执行模块与 FSD 依赖规则。
-- 只有在文档所列构建、测试和启动检查均已于本地通过后，才能将模板描述为“可在本地运行”。发布就绪还要求这些检查在仓库自动化流程中通过。
+- 只有在文档所列构建、测试和启动检查均已于本地通过后，才能将模板描述为“可在本地运行”。
 
-具体命令、测试夹具和框架选择应保留在所属项目中。存在可运行实现后，仓库级自动化可以聚合这些命令。
+具体命令、测试夹具和框架选择应保留在所属项目中。采用模板的仓库自行负责发布流程和下游自动化策略。
 
 ## 决策与权衡
 
